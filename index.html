@@ -470,6 +470,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 const SUPABASE_URL      = "https://jztvonoiitoyjgecunxj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6dHZvbm9paXRveWpnZWN1bnhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTg2MDQsImV4cCI6MjA5NTY3NDYwNH0.eP1s7qqZEIGI7MWbJZ3sFiPdszLLMQzv8-ES5OD2F2A";
 const TABLE = "gastos";
+const BUDGET_TABLE = "presupuestos";
 
 // Contraseñas — se persisten en localStorage para permitir cambio
 let PASSWORDS = JSON.parse(localStorage.getItem("sc_passwords") || '{"1":"clave1","2":"clave2"}');
@@ -504,7 +505,7 @@ let expenses = [];    // espejo de la tabla Supabase en memoria
 
 // Presupuesto por persona: { income, saving, debt }
 // Se persiste en localStorage (no es información sensible de montos de transacciones)
-let budgets = JSON.parse(localStorage.getItem("sc_budgets") || '{"1":{"income":0,"saving":0,"debt":0},"2":{"income":0,"saving":0,"debt":0}}');
+let budgets = {"1":{"income":0,"saving":0,"debt":0},"2":{"income":0,"saving":0,"debt":0}};
 
 let pubQ            = 1;
 const privQ         = { 1: 1, 2: 1 };
@@ -611,7 +612,27 @@ function subscribeRealtime() {
     .subscribe(s => setDot(s === "SUBSCRIBED" ? "live" : "connecting"));
 }
 
+
+function subscribeBudgetRealtime(){
+  db.channel("presupuestos-rt")
+   .on("postgres_changes",
+      {event:"*",schema:"public",table:BUDGET_TABLE},
+      (payload)=>{
+        const row = payload.new || payload.old;
+        if(row && row.person){
+          budgets[row.person]={
+            income:Number(row.income||0),
+            saving:Number(row.saving||0),
+            debt:Number(row.debt||0)
+          };
+          renderAll();
+        }
+      })
+   .subscribe();
+}
+
 function setDot(s) {
+
   const d = document.getElementById("db-dot");
   d.classList.toggle("live", s === "live");
   d.title = s === "live" ? "Conectado · Sincronización activa" : s === "connecting" ? "Conectando…" : "Error";
@@ -674,14 +695,47 @@ function changePassword(person) {
 /* ─────────────────────────────────────────────────────────────
    3.9  PRESUPUESTO (ingresos, ahorro, deudas)
 ───────────────────────────────────────────────────────────── */
-function saveBudget(person) {
+
+async function loadBudgets() {
+  const { data, error } = await db.from(BUDGET_TABLE).select("*");
+  if(error) return console.error(error);
+  (data || []).forEach(r=>{
+    budgets[r.person]={
+      income:Number(r.income||0),
+      saving:Number(r.saving||0),
+      debt:Number(r.debt||0)
+    };
+  });
+}
+
+async function saveBudgetToSupabase(person,income,saving,debt){
+  const { error } = await db.from(BUDGET_TABLE).upsert({
+    person,
+    income,
+    saving,
+    debt,
+    updated_at:new Date().toISOString()
+  },{onConflict:"person"});
+
+  if(error){
+    showToast("Error guardando presupuesto","err");
+    return false;
+  }
+
+  budgets[person]={income,saving,debt};
+  return true;
+}
+
+async function saveBudget(person) {
   const income = parseFloat(document.getElementById(`b-inc-${person}`).value) || 0;
   const saving = parseFloat(document.getElementById(`b-sav-${person}`).value) || 0;
   const debt   = parseFloat(document.getElementById(`b-debt-${person}`).value) || 0;
-  budgets[person] = { income, saving, debt };
-  localStorage.setItem("sc_budgets", JSON.stringify(budgets));
-  showToast("✓ Presupuesto guardado", "ok");
-  renderPrivate(person);
+
+  const ok = await saveBudgetToSupabase(person,income,saving,debt);
+  if(ok){
+    showToast("✓ Presupuesto guardado", "ok");
+    renderAll();
+  }
 }
 
 function buildBudgetRow(person) {
@@ -1095,7 +1149,7 @@ function renderAll() {
 }
 
 document.getElementById("pub-month").value = currentMonth();
-loadExpenses().then(() => subscribeRealtime());
+Promise.all([loadExpenses(),loadBudgets()]).then(()=>{subscribeRealtime();subscribeBudgetRealtime();renderAll();});
 </script>
 </body>
 </html>
