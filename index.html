@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SplitCash — Gastos Compartidos</title>
+
+  <!--
+  ╔══════════════════════════════════════════════════════════════╗
+  ║  DEPENDENCIA EXTERNA: Supabase JS via CDN                    ║
+  ║  Se carga desde jsDelivr. No requiere npm ni build.          ║
+  ╚══════════════════════════════════════════════════════════════╝
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!--
+╔══════════════════════════════════════════════════════════════╗
+║  SECCIÓN 1: ESTILOS CSS                                      ║
+╚══════════════════════════════════════════════════════════════╝
+-->
+<style>
+:root {
+  --bg:      #0d0f18;
+  --surface: #161926;
+  --card:    #1e2236;
+  --card2:   #252a40;
+  --border:  #2c3154;
+  --a1:      #5b8aff;
+  --a2:      #ff6b9d;
+  --sh:      #3ecfaa;
+  --warn:    #f5c842;
+  --warn2:   #ff8c5a;
+  --text:    #dde1f0;
+  --muted:   #6b7194;
+  --danger:  #ff4d6d;
+  --ok:      #3ecfaa;
+  --r:       10px;
+  --tr:      0.2s ease;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Courier New', monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+header {
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  padding: 13px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+header h1 {
+  font-size: clamp(0.9rem, 3vw, 1.2rem);
+  letter-spacing: 3px;
+  color: var(--sh);
+  text-transform: uppercase;
+}
+header h1 span { color: var(--a1); }
+.db-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  display: inline-block;
+  margin-left: 8px;
+  vertical-align: middle;
+  transition: background var(--tr);
+}
+.db-dot.live { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+
+/* ── Nav ── */
+nav { display: flex; gap: 6px; flex-wrap: wrap; }
+nav button {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--muted);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.72rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: var(--tr);
+}
+nav button.active, nav button:hover {
+  color: var(--text);
+  border-color: var(--a1);
+  background: rgba(91,138,255,0.12);
+}
+
+/* ── Layout ── */
+main { max-width: 1000px; margin: 0 auto; padding: 22px 16px 80px; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── Banner de configuración ── */
+#setup-banner {
+  background: rgba(245,200,66,0.1);
+  border: 1.5px solid var(--warn);
+  border-radius: var(--r);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  font-size: 0.8rem;
+  color: var(--warn);
+  line-height: 1.6;
+}
+#setup-banner strong { color: var(--warn); letter-spacing: 1px; }
+#setup-banner code {
+  background: rgba(245,200,66,0.12);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: inherit;
+}
+#setup-banner.hidden { display: none; }
+
+/* ── Sección título ── */
+.sec {
+  font-size: 0.67rem;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: var(--muted);
+  margin: 22px 0 13px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.sec:first-child { margin-top: 0; }
+
+/* ── Period bar ── */
+.period-bar {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 11px 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.period-bar label {
+  font-size: 0.65rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.period-bar input[type="month"] {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 5px 10px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.period-bar input[type="month"]:focus { outline: none; border-color: var(--a1); }
+
+.q-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+.q-pill {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--muted);
+  padding: 4px 11px;
+  border-radius: 20px;
+  font-family: inherit;
+  font-size: 0.67rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: var(--tr);
+  white-space: nowrap;
+}
+.q-pill:hover { border-color: var(--sh); color: var(--sh); }
+.q-pill.active { background: rgba(62,207,170,0.15); border-color: var(--sh); color: var(--sh); }
+
+/* ── Summary cards ── */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 11px;
+  margin-bottom: 18px;
+}
+.sc {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 15px 11px;
+  text-align: center;
+}
+.sc .lbl { font-size: 0.61rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.sc .amt { font-size: clamp(1.05rem, 3vw, 1.55rem); font-weight: 700; }
+.sc .sub { font-size: 0.57rem; color: var(--muted); margin-top: 3px; letter-spacing: 1px; }
+.amt.c1   { color: var(--a1);   }
+.amt.c2   { color: var(--a2);   }
+.amt.cs   { color: var(--sh);   }
+.amt.ctot { color: var(--text); }
+
+/* ── Balance box ── */
+.balance-box {
+  background: var(--card);
+  border: 1.5px solid var(--sh);
+  border-radius: var(--r);
+  padding: 13px 17px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.balance-box .bico { font-size: 1.15rem; flex-shrink: 0; padding-top: 1px; }
+.balance-box p { font-size: 0.83rem; line-height: 1.55; }
+.balance-box strong { color: var(--sh); }
+
+/* ── Acordeón ── */
+.categories { display: flex; flex-direction: column; gap: 8px; }
+.cat-block {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  transition: border-color var(--tr);
+}
+.cat-block:hover { border-color: var(--a1); }
+.cat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  cursor: pointer;
+  user-select: none;
+  gap: 8px;
+}
+.cat-left { display: flex; align-items: center; gap: 8px; flex: 1; }
+.cat-ico  { font-size: 0.92rem; }
+.cat-nm   { font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; }
+.cat-cnt  { font-size: 0.6rem; color: var(--muted); background: var(--card2); border-radius: 10px; padding: 1px 7px; }
+.cat-tot  { font-size: 0.8rem; color: var(--sh); font-weight: 700; white-space: nowrap; margin-right: 8px; }
+.cat-arr  { font-size: 0.58rem; color: var(--muted); transition: transform var(--tr); }
+.cat-block.open .cat-arr { transform: rotate(180deg); }
+.cat-body { display: none; padding: 0 13px 13px; border-top: 1px solid var(--border); }
+.cat-block.open .cat-body { display: block; }
+
+/* ── Tabla gastos ── */
+.expense-table { width: 100%; border-collapse: collapse; font-size: 0.77rem; margin-top: 4px; }
+.expense-table th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 0.61rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 8px 6px 5px;
+  border-bottom: 1px solid var(--border);
+}
+.expense-table td {
+  padding: 7px 6px;
+  border-bottom: 1px dashed rgba(44,49,84,0.55);
+  vertical-align: middle;
+}
+.expense-table tr:last-child td { border-bottom: none; }
+
+.tag {
+  display: inline-block;
+  font-size: 0.59rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.t-sh { background: rgba(62,207,170,0.15);  color: var(--sh);    }
+.t-p1 { background: rgba(91,138,255,0.15);  color: var(--a1);    }
+.t-p2 { background: rgba(255,107,157,0.15); color: var(--a2);    }
+.t-q1 { background: rgba(245,200,66,0.13);  color: var(--warn);  }
+.t-q2 { background: rgba(255,140,90,0.13);  color: var(--warn2); }
+
+.btn-del {
+  background: none; border: none; color: var(--danger);
+  cursor: pointer; font-size: 0.77rem; padding: 3px 6px;
+  border-radius: 4px; transition: background var(--tr);
+}
+.btn-del:hover { background: rgba(255,77,109,0.15); }
+
+/* ── Formulario ── */
+.add-form-wrap {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 15px;
+  margin-bottom: 20px;
+}
+.add-form-title { font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 11px; }
+.add-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 9px;
+  margin-bottom: 11px;
+}
+@media (min-width: 500px) { .add-grid .span2 { grid-column: span 2; } }
+.fg { display: flex; flex-direction: column; gap: 4px; }
+.fg label { font-size: 0.59rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.fg input, .fg select {
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 6px; color: var(--text);
+  padding: 7px 8px; font-family: inherit; font-size: 0.79rem; width: 100%;
+  transition: border-color var(--tr);
+}
+.fg input:focus, .fg select:focus { outline: none; border-color: var(--a1); }
+.fg select option { background: var(--surface); }
+.btn-add {
+  background: var(--a1); color: #fff; border: none; border-radius: 6px;
+  padding: 9px 20px; font-family: inherit; font-size: 0.75rem; letter-spacing: 1.5px;
+  text-transform: uppercase; cursor: pointer;
+  transition: opacity var(--tr), transform var(--tr);
+  position: relative;
+}
+.btn-add:hover  { opacity: 0.85; transform: translateY(-1px); }
+.btn-add:active { transform: translateY(0); }
+.btn-add:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Login ── */
+.login-wrap {
+  max-width: 340px; margin: 50px auto;
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 32px 24px; text-align: center;
+}
+.login-wrap h2 { font-size: 0.9rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 5px; }
+.login-wrap h2.c1 { color: var(--a1); }
+.login-wrap h2.c2 { color: var(--a2); }
+.login-wrap .hint { font-size: 0.73rem; color: var(--muted); margin-bottom: 20px; }
+.login-wrap input {
+  width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 6px; color: var(--text); padding: 10px; font-family: inherit;
+  font-size: 0.95rem; text-align: center; letter-spacing: 5px; margin-bottom: 11px;
+  transition: border-color var(--tr);
+}
+.login-wrap input:focus { outline: none; border-color: var(--a1); }
+.login-wrap .btn-enter {
+  width: 100%; background: var(--a1); color: #fff; border: none;
+  border-radius: 6px; padding: 11px; font-family: inherit; font-size: 0.79rem;
+  letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+  transition: opacity var(--tr);
+}
+.login-wrap .btn-enter:hover { opacity: 0.85; }
+.login-error { color: var(--danger); font-size: 0.7rem; margin-top: 9px; display: none; }
+
+/* ── Priv header ── */
+.priv-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.priv-head h2 { font-size: 0.84rem; letter-spacing: 2px; text-transform: uppercase; }
+.priv-head h2.p1 { color: var(--a1); }
+.priv-head h2.p2 { color: var(--a2); }
+.btn-out {
+  background: transparent; border: 1.5px solid var(--border); color: var(--muted);
+  padding: 5px 11px; border-radius: 6px; cursor: pointer; font-family: inherit;
+  font-size: 0.67rem; letter-spacing: 1px; text-transform: uppercase; transition: var(--tr);
+}
+.btn-out:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── Estado vacío / loading ── */
+.empty { text-align: center; padding: 18px; color: var(--muted); font-size: 0.73rem; letter-spacing: 1px; }
+
+/* ── Spinner ── */
+.spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff; border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 22px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  padding: 8px 20px; border-radius: 20px;
+  font-size: 0.77rem; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; z-index: 999;
+  transition: transform 0.28s ease; white-space: nowrap;
+}
+#toast.ok   { background: var(--sh);     color: #0d1a16; }
+#toast.err  { background: var(--danger); color: #fff;    }
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── Responsive ── */
+@media (max-width: 520px) {
+  header { padding: 10px 12px; }
+  main   { padding: 13px 10px 60px; }
+  .expense-table .col-q  { display: none; }
+}
+@media (max-width: 380px) {
+  .expense-table .col-dt { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!--
+╔══════════════════════════════════════════════════════════════╗
+║  SECCIÓN 2: HTML                                             ║
+╚══════════════════════════════════════════════════════════════╝
+-->
+
+<header>
+  <h1>💰 <span>Split</span>Cash <span class="db-dot" id="db-dot" title="Estado Supabase"></span></h1>
+  <nav>
+    <button class="active" onclick="showPage('public')">📊 Resumen</button>
+    <button onclick="showPage('p1')">👤 Persona 1</button>
+    <button onclick="showPage('p2')">👤 Persona 2</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ── PÁGINA PÚBLICA ── -->
+  <div id="page-public" class="page active">
+
+    <!-- Banner de configuración (visible si faltan credenciales) -->
+    <div id="setup-banner">
+      ⚙️ <strong>Configuración requerida</strong><br/>
+      Edita las líneas marcadas con <code>← CAMBIA ESTO</code> al inicio del bloque
+      <code>&lt;script&gt;</code> con tus credenciales de Supabase y ejecuta el SQL
+      indicado en la consola de tu proyecto para crear la tabla.
+    </div>
+
+    <p class="sec">/ Vista General</p>
+
+    <div class="period-bar">
+      <label>Mes:</label>
+      <input type="month" id="pub-month" onchange="renderPublic()"/>
+      <label>Quincena:</label>
+      <div class="q-pills">
+        <button class="q-pill active" id="pub-q1" onclick="setPubQ(1)">1ª · días 1–15</button>
+        <button class="q-pill"        id="pub-q2" onclick="setPubQ(2)">2ª · días 16–31</button>
+        <button class="q-pill"        id="pub-q0" onclick="setPubQ(0)">Mes completo</button>
+      </div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="sc"><div class="lbl">Persona 1</div><div class="amt c1" id="sum-p1">—</div><div class="sub" id="sub-p1">—</div></div>
+      <div class="sc"><div class="lbl">Persona 2</div><div class="amt c2" id="sum-p2">—</div><div class="sub" id="sub-p2">—</div></div>
+      <div class="sc"><div class="lbl">Compartido</div><div class="amt cs" id="sum-sh">—</div><div class="sub" id="sub-sh">—</div></div>
+      <div class="sc"><div class="lbl">Total General</div><div class="amt ctot" id="sum-tot">—</div><div class="sub" id="sub-per">—</div></div>
+    </div>
+
+    <div class="balance-box">
+      <span class="bico">⚖️</span>
+      <p id="balance-text">Cargando datos…</p>
+    </div>
+
+    <p class="sec">/ Gastos Compartidos por Categoría</p>
+    <div class="categories" id="pub-cats"></div>
+  </div>
+
+  <!-- ── PÁGINA PERSONA 1 ── -->
+  <div id="page-p1" class="page">
+    <div id="login-p1" class="login-wrap">
+      <h2 class="c1">Persona 1</h2>
+      <p class="hint">Ingresa tu clave para acceder</p>
+      <input type="password" id="pwd-p1" placeholder="••••"
+             onkeydown="if(event.key==='Enter') tryLogin(1)"/>
+      <button class="btn-enter" onclick="tryLogin(1)">Entrar</button>
+      <p class="login-error" id="err-p1">Contraseña incorrecta</p>
+    </div>
+    <div id="panel-p1" style="display:none">
+      <div class="priv-head">
+        <h2 class="p1">👤 Persona 1 — Mis Gastos</h2>
+        <button class="btn-out" onclick="logout(1)">Cerrar sesión</button>
+      </div>
+      <div class="period-bar">
+        <label>Mes:</label>
+        <input type="month" id="p1-month" onchange="renderPrivate(1)"/>
+        <label>Quincena:</label>
+        <div class="q-pills">
+          <button class="q-pill active" id="p1-q1" onclick="setPrivQ(1,1)">1ª · 1–15</button>
+          <button class="q-pill"        id="p1-q2" onclick="setPrivQ(1,2)">2ª · 16–31</button>
+          <button class="q-pill"        id="p1-q0" onclick="setPrivQ(1,0)">Mes completo</button>
+        </div>
+      </div>
+      <div class="summary-grid">
+        <div class="sc"><div class="lbl">Mis individuales</div><div class="amt c1" id="pi-ind1">—</div><div class="sub" id="pi-sub1">—</div></div>
+        <div class="sc"><div class="lbl">Mi parte compartida</div><div class="amt cs" id="pi-sh1">—</div><div class="sub">50% de compartidos</div></div>
+        <div class="sc"><div class="lbl">Mi total del período</div><div class="amt ctot" id="pi-tot1">—</div></div>
+      </div>
+      <p class="sec">/ Registrar Nuevo Gasto</p>
+      <div id="form-p1"></div>
+      <p class="sec">/ Mis Gastos del Período</p>
+      <div class="categories" id="priv-cats-p1"></div>
+    </div>
+  </div>
+
+  <!-- ── PÁGINA PERSONA 2 ── -->
+  <div id="page-p2" class="page">
+    <div id="login-p2" class="login-wrap">
+      <h2 class="c2">Persona 2</h2>
+      <p class="hint">Ingresa tu clave para acceder</p>
+      <input type="password" id="pwd-p2" placeholder="••••"
+             onkeydown="if(event.key==='Enter') tryLogin(2)"/>
+      <button class="btn-enter" onclick="tryLogin(2)">Entrar</button>
+      <p class="login-error" id="err-p2">Contraseña incorrecta</p>
+    </div>
+    <div id="panel-p2" style="display:none">
+      <div class="priv-head">
+        <h2 class="p2">👤 Persona 2 — Mis Gastos</h2>
+        <button class="btn-out" onclick="logout(2)">Cerrar sesión</button>
+      </div>
+      <div class="period-bar">
+        <label>Mes:</label>
+        <input type="month" id="p2-month" onchange="renderPrivate(2)"/>
+        <label>Quincena:</label>
+        <div class="q-pills">
+          <button class="q-pill active" id="p2-q1" onclick="setPrivQ(2,1)">1ª · 1–15</button>
+          <button class="q-pill"        id="p2-q2" onclick="setPrivQ(2,2)">2ª · 16–31</button>
+          <button class="q-pill"        id="p2-q0" onclick="setPrivQ(2,0)">Mes completo</button>
+        </div>
+      </div>
+      <div class="summary-grid">
+        <div class="sc"><div class="lbl">Mis individuales</div><div class="amt c2" id="pi-ind2">—</div><div class="sub" id="pi-sub2">—</div></div>
+        <div class="sc"><div class="lbl">Mi parte compartida</div><div class="amt cs" id="pi-sh2">—</div><div class="sub">50% de compartidos</div></div>
+        <div class="sc"><div class="lbl">Mi total del período</div><div class="amt ctot" id="pi-tot2">—</div></div>
+      </div>
+      <p class="sec">/ Registrar Nuevo Gasto</p>
+      <div id="form-p2"></div>
+      <p class="sec">/ Mis Gastos del Período</p>
+      <div class="categories" id="priv-cats-p2"></div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<!--
+╔══════════════════════════════════════════════════════════════╗
+║  SECCIÓN 3: JAVASCRIPT                                       ║
+║                                                              ║
+║  3.1  Configuración (credenciales Supabase + contraseñas)    ║
+║  3.2  Inicialización del cliente Supabase                    ║
+║  3.3  Categorías y estado de UI                              ║
+║  3.4  Utilidades de fecha y período                          ║
+║  3.5  Carga y sincronización de datos (realtime)             ║
+║  3.6  Navegación entre páginas                               ║
+║  3.7  Login / Logout                                         ║
+║  3.8  Agregar / Eliminar gastos                              ║
+║  3.9  Cálculos                                               ║
+║  3.10 Renderizado público                                    ║
+║  3.11 Renderizado privado                                    ║
+║  3.12 Construcción de componentes HTML                       ║
+║  3.13 Inicialización                                         ║
+╚══════════════════════════════════════════════════════════════╝
+-->
+<script>
+
+/* ══════════════════════════════════════════════════════════════
+   3.1  CONFIGURACIÓN — EDITA ESTAS LÍNEAS CON TUS DATOS
+   ══════════════════════════════════════════════════════════════
+
+   PASO A: Crea un proyecto gratis en https://supabase.com
+   PASO B: Ve a Project Settings → API y copia:
+           - Project URL  → pégalo en SUPABASE_URL
+           - anon/public key → pégalo en SUPABASE_ANON_KEY
+   PASO C: Ve al SQL Editor de tu proyecto y ejecuta:
+
+   ┌─────────────────────────────────────────────────────────┐
+   │  CREATE TABLE gastos (                                  │
+   │    id         BIGSERIAL PRIMARY KEY,                    │
+   │    desc       TEXT        NOT NULL,                     │
+   │    amount     NUMERIC     NOT NULL CHECK (amount > 0),  │
+   │    cat_id     TEXT        NOT NULL,                     │
+   │    type       TEXT        NOT NULL,                     │
+   │    person     INTEGER     NOT NULL,                     │
+   │    date       DATE        NOT NULL,                     │
+   │    created_at TIMESTAMPTZ DEFAULT NOW()                 │
+   │  );                                                     │
+   │                                                         │
+   │  ALTER TABLE gastos ENABLE ROW LEVEL SECURITY;          │
+   │                                                         │
+   │  CREATE POLICY "acceso_publico" ON gastos               │
+   │    FOR ALL USING (true) WITH CHECK (true);              │
+   │                                                         │
+   │  ALTER TABLE gastos REPLICA IDENTITY FULL;              │
+   │                                                         │
+   │  ALTER PUBLICATION supabase_realtime ADD TABLE gastos;  │
+   └─────────────────────────────────────────────────────────┘
+   ══════════════════════════════════════════════════════════════ */
+
+const SUPABASE_URL      = "https://jztvonoiitoyjgecunxj.supabase.co";   // ← CAMBIA ESTO
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6dHZvbm9paXRveWpnZWN1bnhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTg2MDQsImV4cCI6MjA5NTY3NDYwNH0.eP1s7qqZEIGI7MWbJZ3sFiPdszLLMQzv8-ES5OD2F2A";                  // ← CAMBIA ESTO
+
+const PASSWORDS = {
+  1: "clave1",   // ← contraseña Persona 1 (cámbiala)
+  2: "clave2"    // ← contraseña Persona 2 (cámbiala)
+};
+
+const TABLE = "gastos";  // nombre de la tabla en Supabase
+
+
+/* ══════════════════════════════════════════════════════════════
+   3.2  INICIALIZACIÓN DEL CLIENTE SUPABASE
+   ══════════════════════════════════════════════════════════════ */
+
+// Detectar si las credenciales ya fueron configuradas
+const CONFIGURED = !SUPABASE_URL.includes("TU_PROYECTO") &&
+                   !SUPABASE_ANON_KEY.includes("TU_ANON_KEY");
+
+let db = null;   // cliente Supabase (se asigna si hay credenciales)
+
+if (CONFIGURED) {
+  const { createClient } = supabase;
+  db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  document.getElementById("setup-banner").classList.add("hidden");
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   3.3  CATEGORÍAS Y ESTADO DE LA UI
+   ══════════════════════════════════════════════════════════════ */
+
+const CATEGORIES = [
+  { id: "alquiler",        name: "Alquiler",         icon: "🏠" },
+  { id: "gasolina",        name: "Gasolina",          icon: "⛽" },
+  { id: "comida",          name: "Comida",            icon: "🍔" },
+  { id: "servicios",       name: "Servicios",         icon: "💡" },
+  { id: "transporte",      name: "Transporte",        icon: "🚌" },
+  { id: "entretenimiento", name: "Entretenimiento",   icon: "🎬" },
+  { id: "salud",           name: "Salud",             icon: "🏥" },
+  { id: "ropa",            name: "Ropa",              icon: "👕" },
+  { id: "viajes",          name: "Viajes",            icon: "✈️"  },
+  { id: "otros",           name: "Otros",             icon: "📦" },
+];
+
+// Array en memoria (espejo de la tabla Supabase)
+let expenses = [];
+
+// Estado de UI
+let pubQ              = 1;
+const privQ           = { 1: 1, 2: 1 };
+const loggedIn        = { 1: false, 2: false };
+
+// Páginas disponibles (para navegación)
+const PAGES = ["public", "p1", "p2"];
+
+
+/* ══════════════════════════════════════════════════════════════
+   3.4  UTILIDADES DE FECHA Y PERÍODO
+   ══════════════════════════════════════════════════════════════ */
+
+function today()        { return new Date().toISOString().slice(0, 10); }
+function currentMonth() { return new Date().toISOString().slice(0, 7);  }
+
+function quincena(dateStr) {
+  return parseInt(dateStr.split("-")[2], 10) <= 15 ? 1 : 2;
+}
+
+function filterByPeriod(arr, month, q) {
+  return arr.filter(e => {
+    const d = e.date || "";
+    if (!d.startsWith(month)) return false;
+    return q === 0 || quincena(d) === q;
+  });
+}
+
+function periodLabel(month, q) {
+  if (!month) return "—";
+  const [y, m] = month.split("-");
+  const MN = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const mn = MN[parseInt(m, 10) - 1];
+  if (q === 0) return `${mn} ${y} · mes completo`;
+  if (q === 1) return `${mn} ${y} · 1ª quincena (1–15)`;
+  return `${mn} ${y} · 2ª quincena (16–31)`;
+}
+
+function setPubQ(q) {
+  pubQ = q;
+  [0,1,2].forEach(n =>
+    document.getElementById("pub-q"+n).classList.toggle("active", n === q));
+  renderPublic();
+}
+
+function setPrivQ(person, q) {
+  privQ[person] = q;
+  [0,1,2].forEach(n =>
+    document.getElementById(`p${person}-q${n}`).classList.toggle("active", n === q));
+  renderPrivate(person);
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   3.5  CARGA Y SINCRONIZACIÓN EN TIEMPO REAL
+   ══════════════════════════════════════════════════════════════
+   - loadExpenses()     → carga inicial desde Supabase
+   - subscribeRealtime() → escucha INSERT/DELETE en tiempo real
+     usando el canal Realtime de Supabase (WebSockets)
+   ══════════════════════════════════════════════════════════════ */
+
+async function loadExpenses() {
+  if (!db) { renderAll(); return; }
+
+  setDot("connecting");
+
+  const { data, error } = await db
+    .from(TABLE)
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Supabase load error:", error);
+    setDot("error");
+    showToast("Error al cargar datos", "err");
+    return;
+  }
+
+  // Mapear columnas de Supabase → formato interno
+  expenses = (data || []).map(mapRow);
+  setDot("live");
+  renderAll();
+}
+
+/**
+ * Convierte una fila de Supabase al formato interno del app.
+ * Supabase usa snake_case; internamente usamos camelCase/alias.
+ */
+function mapRow(row) {
+  return {
+    id:     row.id,
+    desc:   row.desc,
+    amount: parseFloat(row.amount),
+    catId:  row.cat_id,
+    type:   row.type,         // 'shared' | 'p1' | 'p2'
+    person: row.person,       // 1 | 2
+    date:   row.date,         // 'YYYY-MM-DD'
+  };
+}
+
+function subscribeRealtime() {
+  if (!db) return;
+
+  db.channel("gastos-realtime")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: TABLE },
+      (payload) => {
+        // Actualizar el array en memoria según el evento recibido
+        if (payload.eventType === "INSERT") {
+          const nuevo = mapRow(payload.new);
+          // Evitar duplicados si el INSERT lo hizo este mismo cliente
+          if (!expenses.find(e => e.id === nuevo.id)) {
+            expenses.unshift(nuevo);
+          }
+        } else if (payload.eventType === "DELETE") {
+          expenses = expenses.filter(e => e.id !== payload.old.id);
+        } else if (payload.eventType === "UPDATE") {
+          const idx = expenses.findIndex(e => e.id === payload.new.id);
+          if (idx !== -1) expenses[idx] = mapRow(payload.new);
+        }
+        renderAll();
+      }
+    )
+    .subscribe((status) => {
+      setDot(status === "SUBSCRIBED" ? "live" : "connecting");
+    });
+}
+
+/** Controla el indicador de conexión en el header */
+function setDot(state) {
+  const dot = document.getElementById("db-dot");
+  dot.classList.toggle("live", state === "live");
+  dot.title = state === "live"       ? "Conectado a Supabase · Sincronización activa"
+            : state === "connecting" ? "Conectando…"
+            : "Error de conexión";
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   3.6  NAVEGACIÓN ENTRE PÁGINAS
+   ══════════════════════════════════════════════════════════════ */
+
+function showPage(name) {
+  PAGES.forEach(id => {
+    document.getElementById("page-" + id).classList.toggle("active", id === name);
+  });
+  document.querySelectorAll("nav button").forEach((btn, i) =>
+    btn.classList.toggle("active", PAGES[i] === name)
+  );
+  renderAll();
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   3.7  LOGIN / LOGOUT
+   ══════════════════════════════════════════════════════════════ */
+
+function tryLogin(person) {
+  const input = document.getElementById("pwd-p" + person);
+  const errEl = document.getElementById("err-p" + person);
+  if (input.value === PASSWORDS[person]) {
+    loggedIn[person] = true;
+    input.value = "";
+    errEl.style.display = "none";
+    document.getElementById("login-p"  + person).style.display = "none";
+    document.getElementById("panel-p" + person).style.display = "block";
+    const mEl = document.getElementById("p" + person + "-month");
+    if (!mEl.value) mEl.value = currentMonth();
+    renderPrivate(person);
+  } else {
+    errEl.style.display = "block";
+    input.select();
+  }
+}
+
+function logout(person) {
+  loggedIn[person] = false;
+  document.getElementById("panel-p" + person).style.display = "none";
+  document.getElementById("login-p"  + person).style.display = "block";
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   3.8  AGREGAR Y ELIMINAR GASTOS
+   ══════════════════════════════════════════════════════════════ */
+
+async function addExpense(person) {
+  const desc   = document.getElementById(`inp-desc-p${person}`).value.trim();
+  const amount = parseFloat(document.getElementById(`inp-amt-p${person}`).value);
+  const date   = document.getElementById(`inp-date-p${person}`).value || today();
+  const catId  = document.getElementById(`inp-cat-p${person}`).value;
+  const type   = document.getElementById(`inp-type-p${person}`).value;
+
+  if (!desc)                     { document.getElementById(`inp-desc-p${person}`).focus(); return; }
+  if (isNaN(amount) || amount<=0){ document.getElementById(`inp-amt-p${person}`).focus();  return; }
+
+  const btn = document.querySelector(`#form-p${person} .btn-add`);
+  if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spinner"></span>Guardando…`; }
+
+  if (!db) {
+    // Sin Supabase: modo local de demostración
+    expenses.unshift({
+      id: Date.now(), desc, amount, catId,
+      type: type === "shared" ? "shared" : "p" + person,
+      person, date,
+    });
+    renderAll();
+    showToast("✓ Guardado localmente (sin Supabase)", "ok");
+    clearForm(person);
+    if (btn) { btn.disabled = false; btn.textContent = "+ Agregar gasto"; }
+    return;
+  }
+
+  const { error } = await db.from(TABLE).insert({
+    desc,
+    amount,
+    cat_id: catId,
+    type:   type === "shared" ? "shared" : "p" + person,
+    person,
+    date,
+  });
+
+  if (error) {
+    console.error("Insert error:", error);
+    showToast("Error al guardar: " + error.message, "err");
+  } else {
+    showToast("✓ Gasto guardado", "ok");
+    clearForm(person);
+    // El realtime actualizará el array; renderAll se llama en el callback
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = "+ Agregar gasto"; }
+}
+
+async function deleteExpense(id) {
+  if (!confirm("¿Eliminar este gasto?")) return;
+
+  if (!db) {
+    expenses = expenses.filter(e => e.id !== id);
+    renderAll();
+    showToast("✓ Eliminado", "ok");
+    return;
+  }
+
+  const { error } = await db.from(TABLE).delete().eq("id", id);
+  if (error) {
+    showToast("Error al eliminar", "err");
+  } else {
+    showToast("✓ Gasto eliminado", "ok");
+    // El realtime actualizará el array
+  }
+}
+
+function clearForm(person) {
+  document.getElementById(`inp-desc-p${person}`).value = "";
+  document.getElementById(`inp-amt-p${person}`).value  = "";
+}
+
+function showToast(msg, type = "ok") {
+  const t = document.getElementById("toast");
+  t.className = type;
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2400);
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   3.9  CÁLCULOS
+   ══════════════════════════════════════════════════════════════ */
+
+function calcTotals(arr) {
+  let p1 = 0, p2 = 0, sh = 0;
+  arr.forEach(e => {
+    if      (e.type === "p1")     p1 += e.amount;
+    else if (e.type === "p2")     p2 += e.amount;
+    else if (e.type === "shared") sh += e.amount;
+  });
+  return { p1, p2, sh, total: p1 + p2 + sh };
+}
+
+function fmt(n) {
+  return "$" + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   3.10 RENDERIZADO — VISTA PÚBLICA
+   ══════════════════════════════════════════════════════════════ */
+
+function renderPublic() {
+  const mEl = document.getElementById("pub-month");
+  if (!mEl.value) mEl.value = currentMonth();
+  const month = mEl.value;
+  const q     = pubQ;
+
+  const filtered = filterByPeriod(expenses, month, q);
+  const { p1, p2, sh, total } = calcTotals(filtered);
+  const label = periodLabel(month, q);
+
+  document.getElementById("sum-p1").textContent  = fmt(p1);
+  document.getElementById("sum-p2").textContent  = fmt(p2);
+  document.getElementById("sum-sh").textContent  = fmt(sh);
+  document.getElementById("sum-tot").textContent = fmt(total);
+  ["sub-p1","sub-p2","sub-sh","sub-per"].forEach(id =>
+    document.getElementById(id).textContent = label);
+
+  // Balance
+  const half   = sh / 2;
+  const p1net  = p1 + half;
+  const p2net  = p2 + half;
+  const diff   = Math.abs(p1net - p2net);
+  let balHTML;
+  if (!CONFIGURED) {
+    balHTML = "⚙️ Configura las credenciales de Supabase para ver datos reales.";
+  } else if (total === 0) {
+    balHTML = "Sin gastos registrados para este período.";
+  } else if (diff < 0.01) {
+    balHTML = "✅ Todo balanceado — ambas personas han aportado lo mismo.";
+  } else if (p1net > p2net) {
+    balHTML = `Persona 2 le debe <strong>${fmt(diff)}</strong> a Persona 1 para equilibrar los gastos compartidos.`;
+  } else {
+    balHTML = `Persona 1 le debe <strong>${fmt(diff)}</strong> a Persona 2 para equilibrar los gastos compartidos.`;
+  }
+  document.getElementById("balance-text").innerHTML = balHTML;
+
+  // Acordeón de compartidos
+  const container = document.getElementById("pub-cats");
+  container.innerHTML = "";
+  CATEGORIES.forEach(cat => {
+    const catExp = filtered.filter(e => e.catId === cat.id && e.type === "shared");
+    const catTot = catExp.reduce((s, e) => s + e.amount, 0);
+    container.appendChild(buildAccordion(cat, catExp, catTot, false));
+  });
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   3.11 RENDERIZADO — VISTA PRIVADA
+   ══════════════════════════════════════════════════════════════ */
+
+function renderPrivate(person) {
+  if (!loggedIn[person]) return;
+
+  const mEl = document.getElementById("p" + person + "-month");
+  if (!mEl.value) mEl.value = currentMonth();
+  const month = mEl.value;
+  const q     = privQ[person];
+  const label = periodLabel(month, q);
+
+  const filtered  = filterByPeriod(expenses, month, q);
+  const myInd     = filtered.filter(e => e.type === "p" + person).reduce((s,e) => s+e.amount, 0);
+  const shTotal   = filtered.filter(e => e.type === "shared").reduce((s,e) => s+e.amount, 0);
+  const myShare   = shTotal / 2;
+
+  document.getElementById(`pi-ind${person}`).textContent = fmt(myInd);
+  document.getElementById(`pi-sh${person}`).textContent  = fmt(myShare);
+  document.getElementById(`pi-tot${person}`).textContent = fmt(myInd + myShare);
+  document.getElementById(`pi-sub${person}`).textContent = label;
+
+  // Formulario
+  document.getElementById("form-p" + person).innerHTML = buildForm(person);
+
+  // Acordeón: todos los gastos ingresados por esta persona
+  const mine = filtered.filter(e => e.person === person);
+  const container = document.getElementById("priv-cats-p" + person);
+  container.innerHTML = "";
+  CATEGORIES.forEach(cat => {
+    const catExp = mine.filter(e => e.catId === cat.id);
+    const catTot = catExp.reduce((s, e) => s + e.amount, 0);
+    container.appendChild(buildAccordion(cat, catExp, catTot, true));
+  });
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   3.12 CONSTRUCCIÓN DE COMPONENTES HTML
+   ══════════════════════════════════════════════════════════════ */
+
+function buildForm(person) {
+  const catOpts = CATEGORIES.map(c =>
+    `<option value="${c.id}">${c.icon} ${c.name}</option>`
+  ).join("");
+
+  return `
+    <div class="add-form-wrap">
+      <p class="add-form-title">Nuevo gasto — Persona ${person}</p>
+      <div class="add-grid">
+        <div class="fg span2">
+          <label>Descripción</label>
+          <input type="text" id="inp-desc-p${person}"
+                 placeholder="Ej: Supermercado…"
+                 onkeydown="if(event.key==='Enter') addExpense(${person})"/>
+        </div>
+        <div class="fg">
+          <label>Monto $</label>
+          <input type="number" id="inp-amt-p${person}"
+                 placeholder="0.00" min="0.01" step="0.01"/>
+        </div>
+        <div class="fg">
+          <label>Fecha</label>
+          <input type="date" id="inp-date-p${person}" value="${today()}"/>
+        </div>
+        <div class="fg">
+          <label>Categoría</label>
+          <select id="inp-cat-p${person}">${catOpts}</select>
+        </div>
+        <div class="fg">
+          <label>Tipo</label>
+          <select id="inp-type-p${person}">
+            <option value="individual">Solo mío (individual)</option>
+            <option value="shared">Compartido (÷ 2)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-add" onclick="addExpense(${person})">+ Agregar gasto</button>
+    </div>
+  `;
+}
+
+function buildAccordion(cat, catExp, catTot, showDelete) {
+  const block = document.createElement("div");
+  block.className = "cat-block";
+
+  const head = document.createElement("div");
+  head.className = "cat-head";
+  head.innerHTML = `
+    <div class="cat-left">
+      <span class="cat-ico">${cat.icon}</span>
+      <span class="cat-nm">${cat.name}</span>
+      <span class="cat-cnt">${catExp.length} gasto${catExp.length !== 1 ? "s" : ""}</span>
+    </div>
+    <span class="cat-tot">${fmt(catTot)}</span>
+    <span class="cat-arr">▼</span>
+  `;
+  head.onclick = () => block.classList.toggle("open");
+
+  const body = document.createElement("div");
+  body.className = "cat-body";
+
+  if (catExp.length === 0) {
+    body.innerHTML = `<p class="empty">Sin gastos en esta categoría para el período</p>`;
+  } else {
+    const sorted = [...catExp].sort((a, b) => b.date.localeCompare(a.date));
+    const delTh  = showDelete ? "<th></th>" : "";
+
+    const rows = sorted.map(e => {
+      const q        = quincena(e.date);
+      const whoClass = e.type==="shared" ? "t-sh" : e.type==="p1" ? "t-p1" : "t-p2";
+      const whoLbl   = e.type==="shared" ? "compartido" : e.type==="p1" ? "P.1" : "P.2";
+      const qClass   = q===1 ? "t-q1" : "t-q2";
+      const qLbl     = q===1 ? "Q1·1–15" : "Q2·16–31";
+      const del      = showDelete
+        ? `<td><button class="btn-del" onclick="deleteExpense(${e.id})" title="Eliminar">✕</button></td>`
+        : "";
+      return `
+        <tr>
+          <td>${e.desc}</td>
+          <td>${fmt(e.amount)}</td>
+          <td class="col-dt">${e.date}</td>
+          <td class="col-q"><span class="tag ${qClass}">${qLbl}</span></td>
+          <td><span class="tag ${whoClass}">${whoLbl}</span></td>
+          ${del}
+        </tr>`;
+    }).join("");
+
+    body.innerHTML = `
+      <table class="expense-table">
+        <thead>
+          <tr>
+            <th>Descripción</th><th>Monto</th>
+            <th class="col-dt">Fecha</th>
+            <th class="col-q">Qna</th>
+            <th>Tipo</th>${delTh}
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  block.appendChild(head);
+  block.appendChild(body);
+  return block;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   3.13 RENDER GLOBAL + INICIALIZACIÓN
+   ══════════════════════════════════════════════════════════════ */
+
+function renderAll() {
+  renderPublic();
+  if (loggedIn[1]) renderPrivate(1);
+  if (loggedIn[2]) renderPrivate(2);
+}
+
+// Establecer mes actual en selector público
+document.getElementById("pub-month").value = currentMonth();
+
+// Cargar datos y suscribir al realtime
+loadExpenses().then(() => subscribeRealtime());
+
+</script>
+</body>
+</html>
