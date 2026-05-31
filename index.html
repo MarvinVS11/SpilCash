@@ -384,7 +384,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Período -->
       <div class="period-bar">
         <label>Mes:</label>
-        <input type="month" id="p1-month" onchange="renderPrivate(1)"/>
+        <input type="month" id="p1-month" onchange="onMonthChange(1)"/>
         <label>Quincena:</label>
         <div class="q-pills">
           <button class="q-pill active" id="p1-q1" onclick="setPrivQ(1,1)">1ª · 1–15</button>
@@ -463,7 +463,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Período -->
       <div class="period-bar">
         <label>Mes:</label>
-        <input type="month" id="p2-month" onchange="renderPrivate(2)"/>
+        <input type="month" id="p2-month" onchange="onMonthChange(2)"/>
         <label>Quincena:</label>
         <div class="q-pills">
           <button class="q-pill active" id="p2-q1" onclick="setPrivQ(2,1)">1ª · 1–15</button>
@@ -554,11 +554,40 @@ const CATEGORIES = [
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let expenses = [];    // espejo de la tabla Supabase en memoria
+let expenses = [];   // espejo de la tabla gastos
 
-// Presupuesto por persona: { income, saving, debt }
-// Se persiste en localStorage (no es información sensible de montos de transacciones)
-let budgets = {"1":{"income":0,"saving":0,"debt":0},"2":{"income":0,"saving":0,"debt":0}};
+// Presupuesto indexado por clave "person-month-q" donde q=1 o 2.
+// Cada quincena es INDEPENDIENTE por usuario y por mes.
+// q=0 (mes completo) NO se guarda: se calcula sumando q1+q2 al vuelo.
+// Ejemplo: budgets["1-2025-06-1"] = { income:740000, saving:50000, debt:120000 }
+let budgets = {};
+
+// ── Helpers de presupuesto ─────────────────────────────────────
+/** Clave única de un período */
+const bKey = (person, month, q) => `${person}-${month}-${q}`;
+
+/** Registro de una quincena (null si no existe aún) */
+const getBudget = (person, month, q) => budgets[bKey(person, month, q)] || null;
+
+/**
+ * Presupuesto efectivo del período visible.
+ * q=1 o q=2 → devuelve el registro de esa quincena (o ceros si no existe).
+ * q=0 (mes completo) → SUMA los registros de Q1 y Q2 del mismo mes.
+ * Cada quincena es independiente: si solo existe Q1, Q2 aporta ceros.
+ */
+function getBudgetForPeriod(person, month, q) {
+  if (q !== 0) {
+    const b = getBudget(person, month, q);
+    return b || { income: 0, saving: 0, debt: 0 };
+  }
+  const q1 = getBudget(person, month, 1) || { income: 0, saving: 0, debt: 0 };
+  const q2 = getBudget(person, month, 2) || { income: 0, saving: 0, debt: 0 };
+  return {
+    income: q1.income + q2.income,
+    saving: q1.saving + q2.saving,
+    debt:   q1.debt   + q2.debt,
+  };
+}
 
 let pubQ            = 1;
 const privQ         = { 1: 1, 2: 1 };
@@ -600,6 +629,22 @@ function setPubQ(q) {
 function setPrivQ(person, q) {
   privQ[person] = q;
   [0,1,2].forEach(n => document.getElementById(`p${person}-q${n}`).classList.toggle("active", n===q));
+  // Reconstruir budget row para mostrar los campos del período correcto
+  const brEl = document.getElementById("budget-row-" + person);
+  if (brEl) brEl.innerHTML = buildBudgetRow(person);
+  renderPrivate(person);
+}
+
+/**
+ * Se llama al cambiar el selector de mes.
+ * Reinicia la quincena a 1ª (campos del nuevo mes aparecen vacíos)
+ * ya que cada mes es independiente: no hay registros previos para ese mes.
+ */
+function onMonthChange(person) {
+  privQ[person] = 1;
+  [0,1,2].forEach(n => document.getElementById(`p${person}-q${n}`).classList.toggle("active", n===1));
+  const brEl = document.getElementById("budget-row-" + person);
+  if (brEl) brEl.innerHTML = buildBudgetRow(person);
   renderPrivate(person);
 }
 
@@ -667,22 +712,27 @@ function subscribeRealtime() {
 }
 
 
-function subscribeBudgetRealtime(){
+function subscribeBudgetRealtime() {
   db.channel("presupuestos-rt")
-   .on("postgres_changes",
-      {event:"*",schema:"public",table:BUDGET_TABLE},
-      (payload)=>{
+    .on("postgres_changes",
+      { event: "*", schema: "public", table: BUDGET_TABLE },
+      (payload) => {
         const row = payload.new || payload.old;
-        if(row && row.person){
-          budgets[row.person]={
-            income:Number(row.income||0),
-            saving:Number(row.saving||0),
-            debt:Number(row.debt||0)
-          };
+        if (row && row.person && row.month && row.quincena) {
+          const key = bKey(row.person, row.month, row.quincena);
+          if (payload.eventType === "DELETE") {
+            delete budgets[key];
+          } else {
+            budgets[key] = {
+              income: Number(row.income || 0),
+              saving: Number(row.saving || 0),
+              debt:   Number(row.debt   || 0),
+            };
+          }
           renderAll();
         }
       })
-   .subscribe();
+    .subscribe();
 }
 
 function setDot(s) {
@@ -752,60 +802,114 @@ function changePassword(person) {
 
 async function loadBudgets() {
   const { data, error } = await db.from(BUDGET_TABLE).select("*");
-  if(error) return console.error(error);
-  (data || []).forEach(r=>{
-    budgets[r.person]={
-      income:Number(r.income||0),
-      saving:Number(r.saving||0),
-      debt:Number(r.debt||0)
+  if (error) return console.error("loadBudgets:", error.message || error);
+  (data || []).forEach(r => {
+    // Requiere columnas: person, month (TEXT 'YYYY-MM'), quincena (INTEGER 1|2)
+    if (!r.month || !r.quincena) return;
+    const key = bKey(r.person, r.month, r.quincena);
+    budgets[key] = {
+      income: Number(r.income || 0),
+      saving: Number(r.saving || 0),
+      debt:   Number(r.debt   || 0),
     };
   });
 }
 
-async function saveBudgetToSupabase(person,income,saving,debt){
-  const { error } = await db.from(BUDGET_TABLE).upsert({
-    person,
-    income,
-    saving,
-    debt,
-    updated_at:new Date().toISOString()
-  },{onConflict:"person"});
-
-  if(error){
-    showToast("Error guardando presupuesto","err");
+async function saveBudgetToSupabase(person, month, quincena, income, saving, debt) {
+  const { error } = await db.from(BUDGET_TABLE).upsert(
+    { person, month, quincena, income, saving, debt, updated_at: new Date().toISOString() },
+    { onConflict: "person,month,quincena" }
+  );
+  if (error) {
+    const msg = (error && typeof error.message === "string") ? error.message : "error desconocido";
+    showToast("Error guardando presupuesto: " + msg, "err");
     return false;
   }
-
-  budgets[person]={income,saving,debt};
+  budgets[bKey(person, month, quincena)] = { income, saving, debt };
   return true;
 }
 
 async function saveBudget(person) {
+  const mEl     = document.getElementById("p" + person + "-month");
+  const month   = mEl ? mEl.value : currentMonth();
+  const q       = privQ[person];
+
+  // Mes completo es solo lectura (suma Q1+Q2), no se puede guardar
+  if (q === 0) {
+    showToast("Selecciona 1ª o 2ª quincena para guardar", "err");
+    return;
+  }
+
   const income = parseFloat(document.getElementById(`b-inc-${person}`).value) || 0;
   const saving = parseFloat(document.getElementById(`b-sav-${person}`).value) || 0;
   const debt   = parseFloat(document.getElementById(`b-debt-${person}`).value) || 0;
 
-  const ok = await saveBudgetToSupabase(person,income,saving,debt);
-  if(ok){
+  const ok = await saveBudgetToSupabase(person, month, q, income, saving, debt);
+  if (ok) {
     showToast("✓ Presupuesto guardado", "ok");
     renderAll();
   }
 }
 
 function buildBudgetRow(person) {
-  const b = budgets[person] || { income:0, saving:0, debt:0 };
+  const mEl   = document.getElementById("p" + person + "-month");
+  const month = mEl ? mEl.value : currentMonth();
+  const q     = privQ[person];
+
+  // ── Mes completo: mostrar suma Q1+Q2 en modo solo lectura ──────
+  if (q === 0) {
+    const b = getBudgetForPeriod(person, month, 0);
+    return `
+      <div class="fg-budget">
+        <label>💼 Salario total (Q1+Q2)</label>
+        <div class="prefix"><span>¢</span><input type="number" disabled value="${b.income}" style="opacity:0.55;cursor:not-allowed"/></div>
+      </div>
+      <div class="fg-budget">
+        <label>🏦 Ahorro total (Q1+Q2)</label>
+        <div class="prefix"><span>¢</span><input type="number" disabled value="${b.saving}" style="opacity:0.55;cursor:not-allowed"/></div>
+      </div>
+      <div class="fg-budget">
+        <label>💳 Deudas totales (Q1+Q2)</label>
+        <div class="prefix"><span>¢</span><input type="number" disabled value="${b.debt}" style="opacity:0.55;cursor:not-allowed"/></div>
+      </div>
+      <div class="fg-budget" style="align-self:flex-end;font-size:0.61rem;color:var(--muted);line-height:1.6;padding-bottom:4px">
+        Suma de 1ª + 2ª quincena.<br>Selecciona una quincena para editar.
+      </div>
+    `;
+  }
+
+  // ── Quincena 1 o 2: editable, vacío si no hay registro previo ──
+  const existing = getBudget(person, month, q);
+  const incVal   = existing !== null ? existing.income : "";
+  const savVal   = existing !== null ? existing.saving : "";
+  const debtVal  = existing !== null ? existing.debt   : "";
+  const qLabel   = q === 1 ? "1ª quincena (1–15)" : "2ª quincena (16–31)";
+
   return `
     <div class="fg-budget">
-      <label>💼 Ingreso (salario)</label>
-      <div class="prefix"><span>¢</span><input type="number" id="b-inc-${person}" value="${b.income}" min="0" step="1000" placeholder="0"/></div>
+      <label>💼 Salario · ${qLabel}</label>
+      <div class="prefix"><span>¢</span>
+        <input type="number" id="b-inc-${person}" value="${incVal}"
+               min="0" step="1000" placeholder="Salario de esta quincena…"/>
+      </div>
     </div>
     <div class="fg-budget">
-      <label>🏦 Ahorro</label>
-      <div class="prefix"><span>¢</span><input type="number" id="b-sav-${person}" value="${b.saving}" min="0" step="1000" placeholder="0"/></div>
+      <label>🏦 Ahorro · ${qLabel}
+        <span style="font-size:0.54rem;color:var(--saving);font-weight:normal"> — descuenta del salario</span>
+      </label>
+      <div class="prefix"><span>¢</span>
+        <input type="number" id="b-sav-${person}" value="${savVal}"
+               min="0" step="1000" placeholder="Ahorro de esta quincena…"/>
+      </div>
     </div>
     <div class="fg-budget">
-      <label>💳 Deudas (tarjetas u otras)</label>
-      <div class="prefix"><span>¢</span><input type="number" id="b-debt-${person}" value="${b.debt}" min="0" step="1000" placeholder="0"/></div>
+      <label>💳 Deudas · ${qLabel}
+        <span style="font-size:0.54rem;color:var(--debt);font-weight:normal"> — informativo, no afecta saldo</span>
+      </label>
+      <div class="prefix"><span>¢</span>
+        <input type="number" id="b-debt-${person}" value="${debtVal}"
+               min="0" step="1000" placeholder="Deudas de esta quincena…"/>
+      </div>
     </div>
     <button class="btn-save-budget" onclick="saveBudget(${person})">Guardar</button>
   `;
@@ -902,31 +1006,39 @@ function calcTotals(arr) {
 }
 
 /**
- * Suma los gastos pagados con tarjeta (on_card=true) de una persona.
- * - Gastos individuales con tarjeta: monto completo
- * - Gastos compartidos con tarjeta: mitad del monto
- * Esta cifra se muestra como DEUDA informativa, independiente del saldo.
+ * Calcula las deudas con tarjeta de una persona en el período.
+ * Reglas:
+ *  - Gasto individual con tarjeta → deuda completa del usuario
+ *  - Gasto compartido con tarjeta → mitad de la deuda para cada usuario
+ *  - Es independiente del saldo: no lo reduce
+ *  - Cada usuario tiene sus propias deudas (Regla 5)
+ *  - Si deuda > salario del período → se muestra en rojo
  */
 function calcDebt(person, arr) {
   const indCard = arr
-    .filter(e => e.type === "p"+person && e.onCard)
-    .reduce((s,e) => s + e.amount, 0);
+    .filter(e => e.type === "p" + person && e.onCard)
+    .reduce((s, e) => s + e.amount, 0);
   const shCard = arr
     .filter(e => e.type === "shared" && e.onCard)
-    .reduce((s,e) => s + e.amount, 0) / 2;
+    .reduce((s, e) => s + e.amount, 0) / 2;
   return indCard + shCard;
 }
 
 /**
- * Calcula el saldo disponible.
- * saldo = salario − TODOS los gastos del período − ahorro
- * Las deudas (gastos con tarjeta) se muestran por separado y no afectan este cálculo.
- * Si deuda > salario el widget de deuda se pone en rojo.
+ * Calcula el saldo disponible del período.
+ *
+ * FÓRMULA: saldo = salario − gastos_individuales − mitad_compartidos − ahorro
+ *
+ * REGLAS:
+ *  • El salario se reduce con gastos y ahorro (Reglas 2 y 3)
+ *  • Las deudas con tarjeta son informativas y NO restan del saldo (Regla 4)
+ *  • Cada quincena es independiente: si q=1, solo usa el presupuesto de Q1 (Regla 1)
+ *  • Si q=0 (mes completo): usa la suma de presupuesto Q1+Q2 y gastos del mes
  */
-function calcSaldo(person, arr) {
-  const b     = budgets[person] || { income:0, saving:0, debt:0 };
-  const myInd = arr.filter(e => e.type === "p"+person).reduce((s,e) => s+e.amount, 0);
-  const mySh  = arr.filter(e => e.type === "shared").reduce((s,e)  => s+e.amount, 0) / 2;
+function calcSaldo(person, arr, month, q) {
+  const b     = getBudgetForPeriod(person, month, q);
+  const myInd = arr.filter(e => e.type === "p" + person).reduce((s, e) => s + e.amount, 0);
+  const mySh  = arr.filter(e => e.type === "shared").reduce((s, e) => s + e.amount, 0) / 2;
   return b.income - myInd - mySh - b.saving;
 }
 
@@ -1017,11 +1129,13 @@ function renderPrivate(person) {
   const myInd    = filtered.filter(e => e.type === "p"+person).reduce((s,e) => s+e.amount, 0);
   const shTotal  = filtered.filter(e => e.type === "shared").reduce((s,e) => s+e.amount, 0);
   const myShare  = shTotal / 2;
-  const b        = budgets[person] || { income:0, saving:0, debt:0 };
-  const saldo    = calcSaldo(person, filtered);
-  // Deuda = gastos pagados con tarjeta (calculada automáticamente, independiente del saldo)
+  // Presupuesto del período activo (suma Q1+Q2 si es mes completo)
+  const b        = getBudgetForPeriod(person, month, q);
+  // Saldo: income − gastos − ahorro (deudas NO restan)
+  const saldo    = calcSaldo(person, filtered, month, q);
+  // Deudas con tarjeta por usuario, informativas
   const myDebt   = calcDebt(person, filtered);
-  const debtOver = myDebt > b.income;
+  const debtOver = myDebt > b.income && b.income > 0;
 
   // Tarjetas de resumen
   document.getElementById(`pi-inc${person}`).textContent  = fmt(b.income);
@@ -1052,8 +1166,9 @@ function renderPrivate(person) {
   saldoFill.style.width      = pct + "%";
   saldoFill.style.background = saldo < 0 ? "var(--danger)" : saldo < b.income * 0.2 ? "var(--warn)" : "var(--saving)";
 
-  // Budget row
-  document.getElementById(`budget-row-${person}`).innerHTML = buildBudgetRow(person);
+  // Budget row — reconstruir para reflejar el período correcto
+  const brEl2 = document.getElementById(`budget-row-${person}`);
+  if (brEl2) brEl2.innerHTML = buildBudgetRow(person);
 
   // Desglose privado por categoría
   const mine = filtered.filter(e => e.person === person);
