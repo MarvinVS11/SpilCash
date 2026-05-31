@@ -144,11 +144,23 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .cat-tot { font-size: 0.78rem; color: var(--sh); font-weight: 700; white-space: nowrap; margin-right: 8px; }
 .cat-arr { font-size: 0.57rem; color: var(--muted); transition: transform var(--tr); }
 .cat-block.open .cat-arr { transform: rotate(180deg); }
-.cat-body { display: none; padding: 0 12px 12px; border-top: 1px solid var(--border); }
+.cat-body { 
+  display: none; 
+  padding: 0 0 12px; 
+  border-top: 1px solid var(--border); 
+  overflow-x: auto; 
+  -webkit-overflow-scrolling: touch; 
+}
 .cat-block.open .cat-body { display: block; }
 
 /* ── Tabla gastos ── */
-.expense-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 4px; }
+.expense-table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  font-size: 0.75rem; 
+  margin-top: 4px; 
+  min-width: 500px; 
+}
 .expense-table th { text-align: left; color: var(--muted); font-size: 0.59rem; letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 5px 5px; border-bottom: 1px solid var(--border); }
 .expense-table td { padding: 6px 5px; border-bottom: 1px dashed rgba(44,49,84,0.5); vertical-align: middle; }
 .expense-table tr:last-child td { border-bottom: none; }
@@ -274,10 +286,15 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 @media (max-width: 520px) {
   header { padding: 10px 11px; }
   main   { padding: 12px 9px 60px; }
-  .expense-table .col-q  { display: none; }
+  
+  .summary-grid, .breakdown-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
 }
 @media (max-width: 380px) {
-  .expense-table .col-dt { display: none; }
+  .summary-grid, .breakdown-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
 }
 </style>
 </head>
