@@ -228,6 +228,42 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 5px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Switch tarjeta ── */
+.switch-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: nowrap;
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 6px; padding: 7px 10px;
+  transition: border-color var(--tr);
+  user-select: none; cursor: pointer;
+}
+.switch-row:hover { border-color: var(--debt); }
+.switch-row.active-card { border-color: var(--debt); background: rgba(251,146,60,0.08); }
+.switch-row .sw-lbl {
+  font-size: 0.72rem; letter-spacing: 0.5px; color: var(--muted); flex: 1;
+  transition: color var(--tr);
+}
+.switch-row.active-card .sw-lbl { color: var(--debt); }
+.switch-wrap {
+  position: relative; width: 36px; height: 20px; flex-shrink: 0;
+}
+.switch-wrap input[type="checkbox"] { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch-track {
+  position: absolute; inset: 0; border-radius: 20px;
+  background: var(--border); transition: background 0.25s;
+  cursor: pointer;
+}
+.switch-wrap input:checked + .switch-track { background: var(--debt); }
+.switch-track::before {
+  content: ""; position: absolute;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; top: 3px; left: 3px;
+  transition: transform 0.25s;
+}
+.switch-wrap input:checked + .switch-track::before { transform: translateX(16px); }
+/* tag visual en tabla */
+.tag-card { background: rgba(251,146,60,0.18); color: var(--debt); }
+.tag-cash { background: rgba(107,113,148,0.18); color: var(--muted); }
+
 /* ── Toast ── */
 #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); padding: 8px 20px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; z-index: 999; transition: transform 0.28s ease; white-space: nowrap; }
 #toast.ok  { background: var(--sh);     color: #0d1a16; }
@@ -359,7 +395,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         <div class="sc"><div class="lbl">Mis gastos ind.</div><div class="amt c1" id="pi-ind1">¢0</div><div class="sub" id="pi-sub1">—</div></div>
         <div class="sc"><div class="lbl">Mi parte compartida</div><div class="amt cs" id="pi-sh1">¢0</div><div class="sub">50% de compartidos</div></div>
         <div class="sc"><div class="lbl">Ahorro</div><div class="amt csav" id="pi-sav1">¢0</div></div>
-        <div class="sc"><div class="lbl">Deudas</div><div class="amt cdebt" id="pi-debt1">¢0</div></div>
+        <div class="sc"><div class="lbl">Deudas con tarjeta</div><div class="amt cdebt" id="pi-debt1">¢0</div><div class="sub">gastos con tarjeta</div></div>
         <div class="sc"><div class="lbl">Saldo final</div><div class="amt ctot" id="pi-bal1">¢0</div></div>
       </div>
 
@@ -438,7 +474,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         <div class="sc"><div class="lbl">Mis gastos ind.</div><div class="amt c2" id="pi-ind2">¢0</div><div class="sub" id="pi-sub2">—</div></div>
         <div class="sc"><div class="lbl">Mi parte compartida</div><div class="amt cs" id="pi-sh2">¢0</div><div class="sub">50% de compartidos</div></div>
         <div class="sc"><div class="lbl">Ahorro</div><div class="amt csav" id="pi-sav2">¢0</div></div>
-        <div class="sc"><div class="lbl">Deudas</div><div class="amt cdebt" id="pi-debt2">¢0</div></div>
+        <div class="sc"><div class="lbl">Deudas con tarjeta</div><div class="amt cdebt" id="pi-debt2">¢0</div><div class="sub">gastos con tarjeta</div></div>
         <div class="sc"><div class="lbl">Saldo final</div><div class="amt ctot" id="pi-bal2">¢0</div></div>
       </div>
 
@@ -567,9 +603,10 @@ function mapRow(r) {
     desc:   r.desc,
     amount: parseFloat(r.amount),
     catId:  r.cat_id,
-    type:   r.type,    // 'shared' | 'p1' | 'p2'
-    person: r.person,  // 1 | 2
+    type:   r.type,              // 'shared' | 'p1' | 'p2'
+    person: r.person,            // 1 | 2
     date:   r.date,
+    onCard: r.on_card === true,  // true = pagado con tarjeta → suma a deuda
   };
 }
 
@@ -766,6 +803,8 @@ async function addExpense(person) {
   const date   = document.getElementById(`inp-date-p${person}`).value || today();
   const catId  = document.getElementById(`inp-cat-p${person}`).value;
   const type   = document.getElementById(`inp-type-p${person}`).value;
+  // Leer estado del switch de tarjeta
+  const onCard = document.getElementById(`sw-card-p${person}`)?.checked === true;
 
   if (!desc)                    { document.getElementById(`inp-desc-p${person}`).focus(); return; }
   if (isNaN(amount)||amount<=0) { document.getElementById(`inp-amt-p${person}`).focus();  return; }
@@ -776,20 +815,22 @@ async function addExpense(person) {
   try {
     const { error } = await db.from(TABLE).insert({
       desc, amount, cat_id: catId,
-      type: type === "shared" ? "shared" : "p"+person,
-      person, date,
+      type:    type === "shared" ? "shared" : "p"+person,
+      person,  date,
+      on_card: onCard,   // true → suma a deuda; false → solo a categoría
     });
 
     if (error) {
-      // Extraer solo el string del mensaje para evitar DataCloneError
       const msg = (error && typeof error.message === "string")
-        ? error.message
-        : "Error desconocido al guardar";
+        ? error.message : "Error desconocido al guardar";
       showToast("Error: " + msg, "err");
     } else {
       showToast("✓ Gasto guardado", "ok");
       document.getElementById(`inp-desc-p${person}`).value = "";
       document.getElementById(`inp-amt-p${person}`).value  = "";
+      // Resetear switch a efectivo tras guardar
+      const sw = document.getElementById(`sw-card-p${person}`);
+      if (sw) { sw.checked = false; updateSwitchUI(person); }
     }
   } catch (e) {
     const msg = (e && typeof e.message === "string") ? e.message : String(e);
@@ -797,6 +838,21 @@ async function addExpense(person) {
   }
 
   if (btn) { btn.disabled = false; btn.textContent = "+ Agregar gasto"; }
+}
+
+// Actualiza la apariencia del switch al cambiar
+function updateSwitchUI(person) {
+  const sw  = document.getElementById(`sw-card-p${person}`);
+  const row = document.getElementById(`sw-row-p${person}`);
+  const lbl = document.getElementById(`sw-lbl-p${person}`);
+  if (!sw || !row || !lbl) return;
+  if (sw.checked) {
+    row.classList.add("active-card");
+    lbl.textContent = "💳 Con tarjeta — suma a deudas";
+  } else {
+    row.classList.remove("active-card");
+    lbl.textContent = "💵 Sin tarjeta — solo categoría";
+  }
 }
 
 async function deleteExpense(id) {
@@ -829,14 +885,32 @@ function calcTotals(arr) {
 }
 
 /**
- * Calcula el saldo corriente de una persona.
- * saldo = ingresos - (gastos_ind + mitad_compartidos + ahorro + deudas)
+ * Suma los gastos pagados con tarjeta (on_card=true) de una persona.
+ * - Gastos individuales con tarjeta: monto completo
+ * - Gastos compartidos con tarjeta: mitad del monto
+ * Esta cifra se muestra como DEUDA informativa, independiente del saldo.
+ */
+function calcDebt(person, arr) {
+  const indCard = arr
+    .filter(e => e.type === "p"+person && e.onCard)
+    .reduce((s,e) => s + e.amount, 0);
+  const shCard = arr
+    .filter(e => e.type === "shared" && e.onCard)
+    .reduce((s,e) => s + e.amount, 0) / 2;
+  return indCard + shCard;
+}
+
+/**
+ * Calcula el saldo disponible.
+ * saldo = salario − TODOS los gastos del período − ahorro
+ * Las deudas (gastos con tarjeta) se muestran por separado y no afectan este cálculo.
+ * Si deuda > salario el widget de deuda se pone en rojo.
  */
 function calcSaldo(person, arr) {
-  const b      = budgets[person] || { income:0, saving:0, debt:0 };
-  const myInd  = arr.filter(e => e.type === "p"+person).reduce((s,e) => s+e.amount, 0);
-  const mySh   = arr.filter(e => e.type === "shared").reduce((s,e)  => s+e.amount, 0) / 2;
-  return b.income - myInd - mySh - b.saving - b.debt;
+  const b     = budgets[person] || { income:0, saving:0, debt:0 };
+  const myInd = arr.filter(e => e.type === "p"+person).reduce((s,e) => s+e.amount, 0);
+  const mySh  = arr.filter(e => e.type === "shared").reduce((s,e)  => s+e.amount, 0) / 2;
+  return b.income - myInd - mySh - b.saving;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -927,15 +1001,25 @@ function renderPrivate(person) {
   const shTotal  = filtered.filter(e => e.type === "shared").reduce((s,e) => s+e.amount, 0);
   const myShare  = shTotal / 2;
   const b        = budgets[person] || { income:0, saving:0, debt:0 };
-  const saldo    = b.income - myInd - myShare - b.saving - b.debt;
+  const saldo    = calcSaldo(person, filtered);
+  // Deuda = gastos pagados con tarjeta (calculada automáticamente, independiente del saldo)
+  const myDebt   = calcDebt(person, filtered);
+  const debtOver = myDebt > b.income;
 
   // Tarjetas de resumen
   document.getElementById(`pi-inc${person}`).textContent  = fmt(b.income);
   document.getElementById(`pi-ind${person}`).textContent  = fmt(myInd);
   document.getElementById(`pi-sh${person}`).textContent   = fmt(myShare);
   document.getElementById(`pi-sav${person}`).textContent  = fmt(b.saving);
-  document.getElementById(`pi-debt${person}`).textContent = fmt(b.debt);
   document.getElementById(`pi-sub${person}`).textContent  = label;
+
+  // Tarjeta deuda — rojo si supera el salario
+  const debtEl  = document.getElementById(`pi-debt${person}`);
+  const debtSub = debtEl?.nextElementSibling;
+  debtEl.textContent = fmt(myDebt);
+  debtEl.className   = "amt " + (debtOver ? "cneg" : "cdebt");
+  if (debtSub && debtSub.classList.contains("sub"))
+    debtSub.textContent = debtOver ? "⚠️ supera el salario" : "gastos con tarjeta";
 
   // Saldo final — rojo si negativo
   const balEl = document.getElementById(`pi-bal${person}`);
@@ -959,28 +1043,26 @@ function renderPrivate(person) {
   const bkEl = document.getElementById(`priv-breakdown-${person}`);
   bkEl.innerHTML = "";
   CATEGORIES.forEach(cat => {
-    const total = mine.filter(e => e.catId === cat.id).reduce((s,e) => s+e.amount, 0);
+    const catMine   = mine.filter(e => e.catId === cat.id);
+    const total     = catMine.reduce((s,e) => s+e.amount, 0);
     if (total === 0) return;
-    const isShared = mine.filter(e => e.catId === cat.id && e.type === "shared").length > 0;
-    const card = document.createElement("div");
-    card.className = "bk-card";
-    if (isShared) {
-      const sharedAmt = mine.filter(e => e.catId === cat.id && e.type === "shared").reduce((s,e) => s+e.amount, 0);
-      const indAmt    = mine.filter(e => e.catId === cat.id && e.type !== "shared").reduce((s,e) => s+e.amount, 0);
-      card.innerHTML = `
-        <div class="bk-ico">${cat.icon}</div>
-        <div class="bk-cat">${cat.name}</div>
-        <div class="bk-amt">${fmt(indAmt + sharedAmt/2)}</div>
-        <div class="bk-sh">${sharedAmt > 0 ? `compartido: ${fmt(sharedAmt/2)} (${fmt(sharedAmt)})` : ""}</div>
-      `;
-    } else {
-      card.innerHTML = `
-        <div class="bk-ico">${cat.icon}</div>
-        <div class="bk-cat">${cat.name}</div>
-        <div class="bk-amt">${fmt(total)}</div>
-        <div class="bk-sh">individual</div>
-      `;
-    }
+    const sharedAmt = catMine.filter(e => e.type === "shared").reduce((s,e) => s+e.amount, 0);
+    const indAmt    = catMine.filter(e => e.type !== "shared").reduce((s,e) => s+e.amount, 0);
+    const cardAmt   = catMine.filter(e => e.onCard).reduce((s,e) => s+e.amount, 0);
+    const card      = document.createElement("div");
+    card.className  = "bk-card";
+    const shLine    = sharedAmt > 0
+      ? `<div class="bk-sh">compartido: ${fmt(sharedAmt/2)} (${fmt(sharedAmt)})</div>`
+      : `<div class="bk-sh">individual</div>`;
+    const cardLine  = cardAmt > 0
+      ? `<div class="bk-sh" style="color:var(--debt)">💳 tarjeta: ${fmt(cardAmt)}</div>`
+      : "";
+    card.innerHTML = `
+      <div class="bk-ico">${cat.icon}</div>
+      <div class="bk-cat">${cat.name}</div>
+      <div class="bk-amt">${fmt(indAmt + sharedAmt/2)}</div>
+      ${shLine}${cardLine}
+    `;
     bkEl.appendChild(card);
   });
   if (bkEl.innerHTML === "") bkEl.innerHTML = `<p class="empty">Sin gastos este período</p>`;
@@ -1030,6 +1112,19 @@ function buildForm(person) {
             <option value="individual">Solo mío (individual)</option>
             <option value="shared">Compartido (÷ 2)</option>
           </select>
+        </div>
+        <div class="fg">
+          <label>Forma de pago</label>
+          <div class="switch-row" id="sw-row-p${person}"
+               onclick="document.getElementById('sw-card-p${person}').click()">
+            <span class="sw-lbl" id="sw-lbl-p${person}">💵 Sin tarjeta — solo categoría</span>
+            <div class="switch-wrap">
+              <input type="checkbox" id="sw-card-p${person}"
+                     onchange="updateSwitchUI(${person})"
+                     onclick="event.stopPropagation()"/>
+              <div class="switch-track"></div>
+            </div>
+          </div>
         </div>
       </div>
       <button class="btn-add" onclick="addExpense(${person})">+ Agregar gasto</button>
@@ -1082,16 +1177,15 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
       const whoLbl     = isShared ? "compartido" : e.type==="p1" ? "Marvin" : "Karol";
       const qClass     = q===1 ? "t-q1" : "t-q2";
       const qLbl       = q===1 ? "Q1·1–15" : "Q2·16–31";
+      // Tag de forma de pago
+      const payTag     = e.onCard
+        ? `<span class="tag tag-card">💳 tarjeta</span>`
+        : `<span class="tag tag-cash">💵 efectivo</span>`;
 
-      // Monto: si es compartido y estamos en vista privada, mostrar mitad (total)
-      let amtDisplay;
-      if (isShared && showDelete) {
-        amtDisplay = `<span class="shared-display">${fmt(e.amount/2)}</span><span class="shared-total">(${fmt(e.amount)})</span>`;
-      } else if (isShared && !showDelete) {
-        amtDisplay = `<span class="shared-display">${fmt(e.amount/2)}</span><span class="shared-total">(${fmt(e.amount)})</span>`;
-      } else {
-        amtDisplay = fmt(e.amount);
-      }
+      // Monto compartido → mitad (total)
+      const amtDisplay = isShared
+        ? `<span class="shared-display">${fmt(e.amount/2)}</span><span class="shared-total">(${fmt(e.amount)})</span>`
+        : fmt(e.amount);
 
       const del = showDelete
         ? `<td><button class="btn-del" onclick="deleteExpense(${e.id})" title="Eliminar">✕</button></td>`
@@ -1104,6 +1198,7 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
           <td class="col-dt">${e.date}</td>
           <td class="col-q"><span class="tag ${qClass}">${qLbl}</span></td>
           <td><span class="tag ${whoClass}">${whoLbl}</span></td>
+          <td>${payTag}</td>
           ${del}
         </tr>`;
     }).join("");
@@ -1116,7 +1211,8 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
             <th>Monto</th>
             <th class="col-dt">Fecha</th>
             <th class="col-q">Qna</th>
-            <th>Tipo</th>${delTh}
+            <th>Tipo</th>
+            <th>Pago</th>${delTh}
           </tr>
         </thead>
         <tbody>${rows}</tbody>
