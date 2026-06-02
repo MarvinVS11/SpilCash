@@ -419,75 +419,42 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .chart-legend-lbl { color: var(--muted); flex: 1; }
 .chart-legend-val { font-weight: 700; color: var(--text); }
 
-/* ── Modal de edición de gasto ── */
-.edit-modal-row {
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding: 8px;
-  display: none;
-}
-.edit-modal-row.open { display: block; }
-.edit-modal-grid {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 5px;
-  align-items: flex-end;
-  overflow-x: auto;
-  margin-bottom: 7px;
-  padding-bottom: 2px;
-}
-.edit-modal-grid .fg {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex-shrink: 0;
-}
-.edit-modal-grid .fg.fg-desc  { flex: 2; min-width: 110px; }
-.edit-modal-grid .fg.fg-amt   { width: 80px; }
-.edit-modal-grid .fg.fg-mon   { width: 90px; }
-.edit-modal-grid .fg.fg-date  { width: 110px; }
-.edit-modal-grid .fg.fg-cat   { width: 110px; }
-.edit-modal-grid .fg.fg-type  { width: 90px; }
-.edit-modal-grid .fg label {
-  font-size: 0.52rem;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.edit-modal-grid .fg input,
-.edit-modal-grid .fg select {
+/* ── Edición inline en la fila del gasto ── */
+.row-editing td { background: var(--surface) !important; }
+
+/* Inputs/selects inline dentro de la celda */
+.cell-input {
   background: var(--card);
-  border: 1.5px solid var(--border);
-  border-radius: 6px;
+  border: 1.5px solid var(--a1);
+  border-radius: 5px;
   color: var(--text);
-  padding: 5px 6px;
+  padding: 3px 5px;
   font-family: inherit;
-  font-size: 0.73rem;
+  font-size: 0.74rem;
   width: 100%;
-  transition: border-color var(--tr);
+  min-width: 0;
 }
-.edit-modal-grid .fg input:focus,
-.edit-modal-grid .fg select:focus { outline: none; border-color: var(--a1); }
-.edit-actions { display: flex; gap: 6px; }
+.cell-input:focus { outline: none; border-color: var(--sh); }
+
 .btn-edit {
-  background: none; border: none; color: var(--a1);
-  cursor: pointer; font-size: 0.75rem; padding: 3px 6px;
-  border-radius: 4px; transition: background var(--tr);
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: 0.72rem; padding: 2px 5px;
+  border-radius: 4px; transition: color var(--tr), background var(--tr);
 }
-.btn-edit:hover { background: rgba(91,138,255,0.15); }
+.btn-edit:hover { color: var(--a1); background: rgba(91,138,255,0.12); }
+.btn-edit.editing { color: var(--sh); }
+
 .btn-save-edit {
-  background: var(--a1); color: #fff; border: none; border-radius: 6px;
-  padding: 6px 14px; font-family: inherit; font-size: 0.7rem;
-  letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
-  transition: opacity var(--tr); white-space: nowrap;
+  background: var(--sh); color: #0d1a16; border: none; border-radius: 5px;
+  padding: 3px 8px; font-family: inherit; font-size: 0.65rem;
+  font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  cursor: pointer; white-space: nowrap;
 }
-.btn-save-edit:hover { opacity: 0.85; }
 .btn-cancel-edit {
-  background: var(--card2); color: var(--muted); border: 1.5px solid var(--border);
-  border-radius: 6px; padding: 6px 12px; font-family: inherit; font-size: 0.7rem;
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 5px; padding: 3px 7px; font-family: inherit; font-size: 0.65rem;
   letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
-  transition: var(--tr); white-space: nowrap;
+  white-space: nowrap;
 }
 .btn-cancel-edit:hover { border-color: var(--danger); color: var(--danger); }
 
@@ -1706,103 +1673,103 @@ async function deleteExpense(id) {
 }
 
 /**
- * Abre o cierra el panel de edición inline de un gasto.
- * Inyecta un formulario de edición debajo de la fila del gasto.
+ * Activa/desactiva la edición inline de una fila.
+ * Reemplaza el contenido de cada celda por un input/select editable.
  */
 function editExpense(id) {
   const e = expenses.find(ex => ex.id === id);
   if (!e) return;
 
-  // Si ya existe el panel, lo cierra (toggle)
-  const existing = document.getElementById("edit-row-" + id);
-  if (existing) {
-    existing.classList.toggle("open");
-    return;
-  }
-
   const row = document.getElementById("exp-row-" + id);
   if (!row) return;
 
+  // Toggle: si ya está en modo edición, cancelar
+  if (row.classList.contains("row-editing")) {
+    closeEditExpense(id);
+    return;
+  }
+  row.classList.add("row-editing");
+
+  // Guardar HTML original para poder cancelar
+  row.dataset.origHtml = row.innerHTML;
+
   const catOpts = CATEGORIES.map(cat =>
-    "<option value='" + cat.id + "'" + (cat.id === e.catId ? " selected" : "") + ">" + cat.icon + " " + cat.name + "</option>"
+    "<option value='" + cat.id + "'" + (cat.id === e.catId ? " selected" : "") + ">"
+    + cat.icon + " " + cat.name + "</option>"
   ).join("");
 
-  const isUSD    = e.moneda === "USD";
-  const monOpts  = "<option value='CRC'" + (!isUSD ? " selected" : "") + ">\u00a2 Colones (CRC)</option>"
-                 + "<option value='USD'" + (isUSD  ? " selected" : "") + ">$ D\u00f3lares (USD)</option>";
-  const typeOpts = "<option value='individual'" + (e.type !== "shared" ? " selected" : "") + ">Individual</option>"
-                 + "<option value='shared'"     + (e.type === "shared" ? " selected" : "") + ">Compartido (\u00f7 2)</option>";
+  const isUSD   = e.moneda === "USD";
+  const monOpts = "<option value='CRC'" + (!isUSD ? " selected" : "") + ">\u00a2 CRC</option>"
+                + "<option value='USD'" + (isUSD  ? " selected" : "") + ">$ USD</option>";
+  const typOpts = "<option value='individual'" + (e.type !== "shared" ? " selected" : "") + ">Ind.</option>"
+                + "<option value='shared'"     + (e.type === "shared" ? " selected" : "") + ">Comp.</option>";
 
-  const panel = document.createElement("tr");
-  panel.id = "edit-row-" + id;
-  panel.className = "edit-modal-row open";
-  panel.innerHTML = "<td colspan='7'>"
-    + "<div class='edit-modal-grid'>"
-    + "<div class='fg fg-desc'><label>Descripci\u00f3n</label>"
-    + "<input type='text' id='ed-desc-" + id + "' value='" + e.desc.replace(/'/g, "&#39;") + "'/></div>"
-    + "<div class='fg fg-amt'><label>Monto</label>"
-    + "<input type='number' id='ed-amt-" + id + "' value='" + e.amount + "' min='1' step='100'/></div>"
-    + "<div class='fg fg-mon'><label>Moneda</label>"
-    + "<select id='ed-mon-" + id + "'>" + monOpts + "</select></div>"
-    + "<div class='fg fg-date'><label>Fecha</label>"
-    + "<input type='date' id='ed-date-" + id + "' value='" + e.date + "'/></div>"
-    + "<div class='fg fg-cat'><label>Categor\u00eda</label>"
-    + "<select id='ed-cat-" + id + "'>" + catOpts + "</select></div>"
-    + "<div class='fg fg-type'><label>Tipo</label>"
-    + "<select id='ed-type-" + id + "'>" + typeOpts + "</select></div>"
-    + "</div>"
-    + "<div class='edit-actions'>"
-    + "<button class='btn-save-edit' onclick='saveEditExpense(" + id + ", " + e.person + ")'>Guardar</button>"
-    + "<button class='btn-cancel-edit' onclick='closeEditExpense(" + id + ")'>Cancelar</button>"
-    + "</div>"
+  // Reemplazar cada celda con su versión editable
+  row.innerHTML =
+    // Col 1: descripción + badge moneda
+    "<td><input class='cell-input' id='ed-desc-" + id + "' value='" + e.desc.replace(/'/g,"&#39;") + "'/></td>"
+    // Col 2: monto
+    + "<td><input class='cell-input' id='ed-amt-" + id + "' type='number' value='" + e.amount + "' min='1' step='100' style='width:80px'/>"
+    + "<br><select class='cell-input' id='ed-mon-" + id + "' style='width:80px;margin-top:3px'>" + monOpts + "</select></td>"
+    // Col 3: fecha
+    + "<td class='col-dt'><input class='cell-input' id='ed-date-" + id + "' type='date' value='" + e.date + "'/></td>"
+    // Col 4: qna (solo lectura)
+    + "<td class='col-q'><span class='tag " + (e.date && parseInt(e.date.split('-')[2])<=15 ? 't-q1' : 't-q2') + "'>"
+    + (e.date && parseInt(e.date.split('-')[2])<=15 ? 'Q1' : 'Q2') + "</span></td>"
+    // Col 5: tipo
+    + "<td><select class='cell-input' id='ed-type-" + id + "' style='width:70px'>" + typOpts + "</select></td>"
+    // Col 6: categoría (pago — no editable en esta versión)
+    + "<td><select class='cell-input' id='ed-cat-" + id + "'>" + catOpts + "</select></td>"
+    // Col 7: acciones guardar/cancelar
+    + "<td style='white-space:nowrap'>"
+    + "<button class='btn-save-edit' onclick='saveEditExpense(" + id + "," + e.person + ")'>✓</button> "
+    + "<button class='btn-cancel-edit' onclick='closeEditExpense(" + id + ")'>✕</button>"
     + "</td>";
-
-  row.insertAdjacentElement("afterend", panel);
 }
 
 function closeEditExpense(id) {
-  const panel = document.getElementById("edit-row-" + id);
-  if (panel) panel.remove();
+  const row = document.getElementById("exp-row-" + id);
+  if (!row) return;
+  if (row.dataset.origHtml) row.innerHTML = row.dataset.origHtml;
+  row.classList.remove("row-editing");
+  delete row.dataset.origHtml;
 }
 
 async function saveEditExpense(id, person) {
-  const desc      = document.getElementById("ed-desc-" + id)?.value.trim();
-  const amount    = parseFloat(document.getElementById("ed-amt-" + id)?.value);
-  const moneda    = document.getElementById("ed-mon-" + id)?.value || "CRC";
-  const date      = document.getElementById("ed-date-" + id)?.value;
-  const catId     = document.getElementById("ed-cat-" + id)?.value;
-  const typeVal   = document.getElementById("ed-type-" + id)?.value;
+  const desc    = document.getElementById("ed-desc-"  + id)?.value.trim();
+  const amount  = parseFloat(document.getElementById("ed-amt-"  + id)?.value);
+  const moneda  = document.getElementById("ed-mon-"   + id)?.value || "CRC";
+  const date    = document.getElementById("ed-date-"  + id)?.value;
+  const typeVal = document.getElementById("ed-type-"  + id)?.value;
+  const catId   = document.getElementById("ed-cat-"   + id)?.value;
 
   if (!desc)                     { showToast("Ingresa una descripci\u00f3n", "err"); return; }
-  if (isNaN(amount)||amount <= 0){ showToast("Ingresa un monto v\u00e1lido", "err"); return; }
+  if (isNaN(amount)||amount <= 0){ showToast("Ingresa un monto v\u00e1lido",  "err"); return; }
 
   const tipoCambio = moneda === "USD" ? getLastTipoCambio(person) : 1;
   const amountCRC  = moneda === "USD" ? amount * tipoCambio : amount;
   const type       = typeVal === "shared" ? "shared" : "p" + person;
 
-  const btn = document.querySelector("#edit-row-" + id + " .btn-save-edit");
-  if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }
+  const saveBtn = document.querySelector("#exp-row-" + id + " .btn-save-edit");
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "..."; }
 
   try {
     const { error } = await db.from(TABLE).update({
       desc, amount, amount_crc: amountCRC,
-      cat_id:      catId,
-      type,
-      date,
-      moneda,
-      tipo_cambio: tipoCambio,
+      cat_id: catId, type, date,
+      moneda, tipo_cambio: tipoCambio,
     }).eq("id", id);
 
     if (error) {
       showToast("Error: " + (error.message || "al guardar"), "err");
-      if (btn) { btn.disabled = false; btn.textContent = "Guardar cambios"; }
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "\u2713"; }
     } else {
       showToast("\u2713 Gasto actualizado", "ok");
-      closeEditExpense(id);
+      // El realtime actualizará la fila automáticamente
     }
-  } catch (e) {
-    showToast("Error: " + (e.message || String(e)), "err");
-    if (btn) { btn.disabled = false; btn.textContent = "Guardar cambios"; }
+  } catch (err) {
+    showToast("Error: " + (err.message || String(err)), "err");
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "\u2713"; }
   }
 }
 
