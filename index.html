@@ -1798,45 +1798,41 @@ function renderPublic() {
 function renderPrivate(person) {
   if (!loggedIn[person]) return;
 
-  const mEl = document.getElementById("p"+person+"-month");
+  const mEl = document.getElementById("p" + person + "-month");
   if (!mEl.value) mEl.value = currentMonth();
   const month = mEl.value;
   const q     = privQ[person];
   const label = periodLabel(month, q);
 
   const filtered = filterByPeriod(expenses, month, q);
-  const myInd    = filtered.filter(e => e.type === "p"+person).reduce((s,e) => s+e.amount, 0);
-  const shTotal  = filtered.filter(e => e.type === "shared").reduce((s,e) => s+e.amount, 0);
+  const mine     = filtered.filter(e => e.person === person);
+  const myInd    = filtered.filter(e => e.type === "p"+person).reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+  const shTotal  = filtered.filter(e => e.type === "shared").reduce((s,e) => s+(e.amountCRC||e.amount), 0);
   const myShare  = shTotal / 2;
-  // Presupuesto del período activo (suma Q1+Q2 si es mes completo)
   const b        = getBudgetForPeriod(person, month, q);
-  // Saldo: income − gastos − ahorro (deudas NO restan)
   const saldo    = calcSaldo(person, filtered, month, q);
-  // Deudas con tarjeta por usuario, informativas
   const myDebt   = calcDebt(person, filtered);
   const debtOver = myDebt > b.income && b.income > 0;
 
-  // Tarjetas de resumen
+  // ── Tarjetas de resumen ──────────────────────────────────────
   document.getElementById(`pi-inc${person}`).textContent  = fmt(b.income);
   document.getElementById(`pi-ind${person}`).textContent  = fmt(myInd);
   document.getElementById(`pi-sh${person}`).textContent   = fmt(myShare);
   document.getElementById(`pi-sav${person}`).textContent  = fmt(b.saving);
   document.getElementById(`pi-sub${person}`).textContent  = label;
 
-  // Tarjeta deuda — rojo si supera el salario
   const debtEl  = document.getElementById(`pi-debt${person}`);
   const debtSub = debtEl?.nextElementSibling;
   debtEl.textContent = fmt(myDebt);
   debtEl.className   = "amt " + (debtOver ? "cneg" : "cdebt");
   if (debtSub && debtSub.classList.contains("sub"))
-    debtSub.textContent = debtOver ? "⚠️ supera el salario" : "gastos con tarjeta";
+    debtSub.textContent = debtOver ? "\u26a0\ufe0f supera el salario" : "gastos con tarjeta";
 
-  // Saldo final — rojo si negativo
   const balEl = document.getElementById(`pi-bal${person}`);
   balEl.textContent = fmt(saldo);
   balEl.className   = "amt " + (saldo < 0 ? "cneg" : "ctot");
 
-  // Barra de saldo corriente
+  // ── Barra de saldo ────────────────────────────────────────────
   const saldoNum  = document.getElementById(`saldo-num-${person}`);
   const saldoFill = document.getElementById(`saldo-fill-${person}`);
   saldoNum.textContent = fmt(saldo);
@@ -1845,82 +1841,92 @@ function renderPrivate(person) {
   saldoFill.style.width      = pct + "%";
   saldoFill.style.background = saldo < 0 ? "var(--danger)" : saldo < b.income * 0.2 ? "var(--warn)" : "var(--saving)";
 
-  // Budget row — reconstruir para reflejar el período correcto
+  // ── Budget row ────────────────────────────────────────────────
   const brEl2 = document.getElementById(`budget-row-${person}`);
   if (brEl2) brEl2.innerHTML = buildBudgetRow(person);
 
-  // Desglose privado por categoría
-  const mine = filtered.filter(e => e.person === person);
+  // ── Desglose por categoría ────────────────────────────────────
   const bkEl = document.getElementById(`priv-breakdown-${person}`);
-  bkEl.innerHTML = "";
-  CATEGORIES.forEach(cat => {
-    const catMine   = mine.filter(e => e.catId === cat.id);
-    const total     = catMine.reduce((s,e) => s+e.amount, 0);
-    if (total === 0) return;
-    const sharedAmt = catMine.filter(e => e.type === "shared").reduce((s,e) => s+e.amount, 0);
-    const indAmt    = catMine.filter(e => e.type !== "shared").reduce((s,e) => s+e.amount, 0);
-    const cardAmt   = catMine.filter(e => e.onCard).reduce((s,e) => s+e.amount, 0);
-    const card      = document.createElement("div");
-    card.className  = "bk-card";
-    const shLine    = sharedAmt > 0
-      ? `<div class="bk-sh">compartido: ${fmt(sharedAmt/2)} (${fmt(sharedAmt)})</div>`
-      : `<div class="bk-sh">individual</div>`;
-    const cardLine  = cardAmt > 0
-      ? `<div class="bk-sh" style="color:var(--debt)">💳 tarjeta: ${fmt(cardAmt)}</div>`
-      : "";
-    card.innerHTML = `
-      <div class="bk-ico">${cat.icon}</div>
-      <div class="bk-cat">${cat.name}</div>
-      <div class="bk-amt">${fmt(indAmt + sharedAmt/2)}</div>
-      ${shLine}${cardLine}
-    `;
-    bkEl.appendChild(card);
-  });
-  if (bkEl.innerHTML === "") bkEl.innerHTML = `<p class="empty">Sin gastos este período</p>`;
+  if (bkEl) {
+    bkEl.innerHTML = "";
+    CATEGORIES.forEach(cat => {
+      const catMine   = mine.filter(e => e.catId === cat.id);
+      const total     = catMine.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      if (total === 0) return;
+      const sharedAmt = catMine.filter(e => e.type === "shared").reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      const indAmt    = catMine.filter(e => e.type !== "shared").reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      const cardAmt   = catMine.filter(e => e.onCard).reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      const card      = document.createElement("div");
+      card.className  = "bk-card";
+      const shLine    = sharedAmt > 0
+        ? `<div class="bk-sh">compartido: ${fmt(sharedAmt/2)} (${fmt(sharedAmt)})</div>`
+        : `<div class="bk-sh">individual</div>`;
+      const cardLine  = cardAmt > 0
+        ? `<div class="bk-sh" style="color:var(--debt)">\U0001F4B3 tarjeta: ${fmt(cardAmt)}</div>`
+        : "";
+      card.innerHTML = `
+        <div class="bk-ico">${cat.icon}</div>
+        <div class="bk-cat">${cat.name}</div>
+        <div class="bk-amt">${fmt(indAmt + sharedAmt/2)}</div>
+        ${shLine}${cardLine}`;
+      bkEl.appendChild(card);
+    });
+    if (bkEl.innerHTML === "") bkEl.innerHTML = `<p class="empty">Sin gastos este per\u00edodo</p>`;
+  }
 
-  // Resumen de cuotas
+  // ── Cuota summary ─────────────────────────────────────────────
   const cuotaSav  = calcCuotaAhorro(person);
   const cuotaDebt = calcCuotaDeuda(person);
   const netSalary = b.income - cuotaSav - cuotaDebt;
   const cuotaEl   = document.getElementById(`cuota-summary-${person}`);
   if (cuotaEl) cuotaEl.innerHTML = `
     <div class="cuota-row">
-      <span class="cuota-lbl">💼 Salario base</span>
+      <span class="cuota-lbl">\U0001F4BC Salario base</span>
       <span class="cuota-val">${fmt(b.income)}</span>
     </div>
     <div class="cuota-row">
-      <span class="cuota-lbl">🏦 Cuotas ahorro</span>
-      <span class="cuota-val saving">− ${fmt(cuotaSav)}</span>
+      <span class="cuota-lbl">\U0001F3E6 Cuotas ahorro</span>
+      <span class="cuota-val saving">\u2212 ${fmt(cuotaSav)}</span>
     </div>
     <div class="cuota-row">
-      <span class="cuota-lbl">💳 Cuotas deuda</span>
-      <span class="cuota-val debt">− ${fmt(cuotaDebt)}</span>
+      <span class="cuota-lbl">\U0001F4B3 Cuotas deuda</span>
+      <span class="cuota-val debt">\u2212 ${fmt(cuotaDebt)}</span>
     </div>
     <div class="cuota-row" style="border-top:1px solid var(--border);padding-top:6px;margin-top:2px">
-      <span class="cuota-lbl">📊 Salario neto para gastos</span>
-      <span class="cuota-val ${netSalary < 0 ? 'neg' : 'net'}">${fmt(netSalary)}</span>
-    </div>
-  `;
+      <span class="cuota-lbl">\U0001F4CA Salario neto para gastos</span>
+      <span class="cuota-val ${netSalary < 0 ? "neg" : "net"}">${fmt(netSalary)}</span>
+    </div>`;
 
-  // Gráfico circular
-  const totalGastos  = myInd + myShare;
-  renderChart(person, b.income, cuotaSav, cuotaDebt, totalGastos);
+  // ── Gráfico circular (en try/catch para no bloquear el resto) ─
+  try {
+    const totalGastos = myInd + myShare;
+    renderChart(person, b.income, cuotaSav, cuotaDebt, totalGastos);
+  } catch(e) {
+    console.warn("renderChart error:", e.message);
+  }
 
-  // Módulos ahorro y deuda
-  renderSavings(person);
-  renderDebts(person);
+  // ── Módulos ahorro y deuda ────────────────────────────────────
+  try { renderSavings(person); } catch(e) { console.warn("renderSavings:", e.message); }
+  try { renderDebts(person);   } catch(e) { console.warn("renderDebts:",   e.message); }
 
-  // Formulario
-  document.getElementById("form-p"+person).innerHTML = buildForm(person);
+  // ── Formulario de nuevo gasto ─────────────────────────────────
+  const formEl = document.getElementById("form-p" + person);
+  if (formEl) formEl.innerHTML = buildForm(person);
 
-  // Acordeón
-  const container = document.getElementById("priv-cats-p"+person);
-  container.innerHTML = "";
-  CATEGORIES.forEach(cat => {
-    const catExp = mine.filter(e => e.catId === cat.id);
-    const catTot = catExp.reduce((s,e) => s+e.amount, 0);
-    container.appendChild(buildAccordion(cat, catExp, catTot, true));
-  });
+  // ── Acordeón de gastos del período ───────────────────────────
+  const container = document.getElementById("priv-cats-p" + person);
+  if (container) {
+    container.innerHTML = "";
+    CATEGORIES.forEach(cat => {
+      const catExp = mine.filter(e => e.catId === cat.id);
+      const catTot = catExp.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      try {
+        container.appendChild(buildAccordion(cat, catExp, catTot, true));
+      } catch(e) {
+        console.warn("buildAccordion error:", cat.id, e.message);
+      }
+    });
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────
