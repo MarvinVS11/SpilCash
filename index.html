@@ -870,15 +870,30 @@ function fmt(n) {
 ───────────────────────────────────────────────────────────── */
 function mapRow(r) {
   return {
-    id:     r.id,
-    desc:   r.desc,
-    amount: parseFloat(r.amount),
-    catId:  r.cat_id,
-    type:   r.type,              // 'shared' | 'p1' | 'p2'
-    person: r.person,            // 1 | 2
-    date:   r.date,
-    onCard: r.on_card === true,  // true = pagado con tarjeta → suma a deuda
+    id:        r.id,
+    desc:      r.desc,
+    amount:    parseFloat(r.amount),
+    amountCRC: parseFloat(r.amount_crc || r.amount),
+    catId:     r.cat_id,
+    type:      r.type,
+    person:    r.person,
+    date:      r.date,
+    onCard:    r.on_card === true,
+    moneda:    r.moneda     || "CRC",
+    tipoCambio:parseFloat(r.tipo_cambio || 1),
   };
+}
+
+function getLastTipoCambio(person) {
+  const usdDebt = debts
+    .filter(d => d.person === person && d.moneda === "USD" && d.tipo_cambio > 1)
+    .sort((a, b) => b.id - a.id)[0];
+  if (usdDebt) return usdDebt.tipo_cambio;
+  const usdExp = expenses
+    .filter(e => e.person === person && e.moneda === "USD" && e.tipoCambio > 1)
+    .sort((a, b) => b.id - a.id)[0];
+  if (usdExp) return usdExp.tipoCambio;
+  return 1;
 }
 
 async function loadExpenses() {
@@ -1541,13 +1556,15 @@ function buildBudgetRow(person) {
    3.10 AGREGAR / ELIMINAR GASTOS
 ───────────────────────────────────────────────────────────── */
 async function addExpense(person) {
-  const desc   = document.getElementById(`inp-desc-p${person}`).value.trim();
-  const amount = parseFloat(document.getElementById(`inp-amt-p${person}`).value);
-  const date   = document.getElementById(`inp-date-p${person}`).value || today();
-  const catId  = document.getElementById(`inp-cat-p${person}`).value;
-  const type   = document.getElementById(`inp-type-p${person}`).value;
-  // Leer estado del switch de tarjeta
-  const onCard = document.getElementById(`sw-card-p${person}`)?.checked === true;
+  const desc       = document.getElementById(`inp-desc-p${person}`).value.trim();
+  const amount     = parseFloat(document.getElementById(`inp-amt-p${person}`).value);
+  const date       = document.getElementById(`inp-date-p${person}`).value || today();
+  const catId      = document.getElementById(`inp-cat-p${person}`).value;
+  const type       = document.getElementById(`inp-type-p${person}`).value;
+  const onCard     = document.getElementById(`sw-card-p${person}`)?.checked === true;
+  const moneda     = document.getElementById(`inp-moneda-p${person}`)?.value || "CRC";
+  const tipoCambio = moneda === "USD" ? getLastTipoCambio(person) : 1;
+  const amountCRC  = moneda === "USD" ? amount * tipoCambio : amount;
 
   if (!desc)                    { document.getElementById(`inp-desc-p${person}`).focus(); return; }
   if (isNaN(amount)||amount<=0) { document.getElementById(`inp-amt-p${person}`).focus();  return; }
@@ -1557,10 +1574,12 @@ async function addExpense(person) {
 
   try {
     const { error } = await db.from(TABLE).insert({
-      desc, amount, cat_id: catId,
-      type:    type === "shared" ? "shared" : "p"+person,
-      person,  date,
-      on_card: onCard,   // true → suma a deuda; false → solo a categoría
+      desc, amount, amount_crc: amountCRC, cat_id: catId,
+      type:        type === "shared" ? "shared" : "p"+person,
+      person,      date,
+      on_card:     onCard,
+      moneda,
+      tipo_cambio: tipoCambio,
     });
 
     if (error) {
@@ -1620,9 +1639,10 @@ async function deleteExpense(id) {
 function calcTotals(arr) {
   let p1 = 0, p2 = 0, sh = 0;
   arr.forEach(e => {
-    if      (e.type === "p1")     p1 += e.amount;
-    else if (e.type === "p2")     p2 += e.amount;
-    else if (e.type === "shared") sh += e.amount;
+    const a = e.amountCRC || e.amount;
+    if      (e.type === "p1")     p1 += a;
+    else if (e.type === "p2")     p2 += a;
+    else if (e.type === "shared") sh += a;
   });
   return { p1, p2, sh, total: p1 + p2 + sh };
 }
@@ -1694,8 +1714,8 @@ function debtAmountDisplay(amount, moneda, tipo_cambio) {
  */
 function calcSaldo(person, arr, month, q) {
   const b        = getBudgetForPeriod(person, month, q);
-  const myInd    = arr.filter(e => e.type === "p" + person).reduce((s, e) => s + e.amount, 0);
-  const mySh     = arr.filter(e => e.type === "shared").reduce((s, e) => s + e.amount, 0) / 2;
+  const myInd    = arr.filter(e => e.type === "p" + person).reduce((s, e) => s + (e.amountCRC||e.amount), 0);
+  const mySh     = arr.filter(e => e.type === "shared").reduce((s, e) => s + (e.amountCRC||e.amount), 0) / 2;
   const cuotaSav = calcCuotaAhorro(person);
   const cuotaDebt= calcCuotaDeuda(person);
   return b.income - myInd - mySh - cuotaSav - cuotaDebt;
@@ -1907,7 +1927,11 @@ function renderPrivate(person) {
    3.14 COMPONENTES HTML
 ───────────────────────────────────────────────────────────── */
 function buildForm(person) {
-  const catOpts = CATEGORIES.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join("");
+  const catOpts = CATEGORIES.map(cat => `<option value="${cat.id}">${cat.icon} ${cat.name}</option>`).join("");
+  const lastTC  = getLastTipoCambio(person);
+  const tcText  = lastTC > 1
+    ? "¢" + lastTC.toLocaleString() + " por $1"
+    : "Registra una deuda USD primero";
   return `
     <div class="add-form-wrap">
       <p class="add-form-title">Nuevo gasto — ${NAMES[person]}</p>
@@ -1918,7 +1942,19 @@ function buildForm(person) {
                  onkeydown="if(event.key==='Enter') addExpense(${person})"/>
         </div>
         <div class="fg">
-          <label>Monto ¢</label>
+          <label>Moneda</label>
+          <select id="inp-moneda-p${person}" onchange="updateMonedaUI(${person})">
+            <option value="CRC">¢ Colones (CRC)</option>
+            <option value="USD">$ Dólares (USD)</option>
+          </select>
+        </div>
+        <div class="fg" id="tc-info-p${person}" style="display:none">
+          <label>Tipo de cambio (auto)</label>
+          <input type="text" disabled value="${tcText}"
+                 style="opacity:0.6;cursor:not-allowed;font-size:0.75rem;background:var(--card2)"/>
+        </div>
+        <div class="fg">
+          <label id="inp-amt-lbl-p${person}">Monto ¢</label>
           <input type="number" id="inp-amt-p${person}" placeholder="0" min="1" step="100"/>
         </div>
         <div class="fg">
@@ -1953,6 +1989,14 @@ function buildForm(person) {
       <button class="btn-add" onclick="addExpense(${person})">+ Agregar gasto</button>
     </div>
   `;
+}
+
+function updateMonedaUI(person) {
+  const moneda = document.getElementById(`inp-moneda-p${person}`)?.value || "CRC";
+  const lbl    = document.getElementById(`inp-amt-lbl-p${person}`);
+  const tcWrap = document.getElementById(`tc-info-p${person}`);
+  if (lbl)    lbl.textContent = moneda === "USD" ? "Monto $" : "Monto ¢";
+  if (tcWrap) tcWrap.style.display = moneda === "USD" ? "flex" : "none";
 }
 
 function buildAccordion(cat, catExp, catTot, showDelete) {
