@@ -419,6 +419,43 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .chart-legend-lbl { color: var(--muted); flex: 1; }
 .chart-legend-val { font-weight: 700; color: var(--text); }
 
+/* ── Modal de edición de gasto ── */
+.edit-modal-row {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 12px 8px;
+  display: none;
+}
+.edit-modal-row.open { display: block; }
+.edit-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.edit-modal-grid .span2 { grid-column: span 2; }
+@media (max-width: 480px) { .edit-modal-grid .span2 { grid-column: span 1; } }
+.btn-edit {
+  background: none; border: none; color: var(--a1);
+  cursor: pointer; font-size: 0.75rem; padding: 3px 6px;
+  border-radius: 4px; transition: background var(--tr);
+}
+.btn-edit:hover { background: rgba(91,138,255,0.15); }
+.btn-save-edit {
+  background: var(--a1); color: #fff; border: none; border-radius: 6px;
+  padding: 7px 16px; font-family: inherit; font-size: 0.72rem;
+  letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+  transition: opacity var(--tr);
+}
+.btn-save-edit:hover { opacity: 0.85; }
+.btn-cancel-edit {
+  background: var(--card2); color: var(--muted); border: 1.5px solid var(--border);
+  border-radius: 6px; padding: 7px 14px; font-family: inherit; font-size: 0.72rem;
+  letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+  transition: var(--tr); margin-left: 6px;
+}
+.btn-cancel-edit:hover { border-color: var(--danger); color: var(--danger); }
+
 /* ── Responsive ── */
 @media (max-width: 520px) {
   header { padding: 10px 11px; }
@@ -1633,6 +1670,105 @@ async function deleteExpense(id) {
   }
 }
 
+/**
+ * Abre o cierra el panel de edición inline de un gasto.
+ * Inyecta un formulario de edición debajo de la fila del gasto.
+ */
+function editExpense(id) {
+  const e = expenses.find(ex => ex.id === id);
+  if (!e) return;
+
+  // Si ya existe el panel, lo cierra (toggle)
+  const existing = document.getElementById("edit-row-" + id);
+  if (existing) {
+    existing.classList.toggle("open");
+    return;
+  }
+
+  const row = document.getElementById("exp-row-" + id);
+  if (!row) return;
+
+  const catOpts = CATEGORIES.map(cat =>
+    "<option value='" + cat.id + "'" + (cat.id === e.catId ? " selected" : "") + ">" + cat.icon + " " + cat.name + "</option>"
+  ).join("");
+
+  const isUSD    = e.moneda === "USD";
+  const monOpts  = "<option value='CRC'" + (!isUSD ? " selected" : "") + ">\u00a2 Colones (CRC)</option>"
+                 + "<option value='USD'" + (isUSD  ? " selected" : "") + ">$ D\u00f3lares (USD)</option>";
+  const typeOpts = "<option value='individual'" + (e.type !== "shared" ? " selected" : "") + ">Individual</option>"
+                 + "<option value='shared'"     + (e.type === "shared" ? " selected" : "") + ">Compartido (\u00f7 2)</option>";
+
+  const panel = document.createElement("tr");
+  panel.id = "edit-row-" + id;
+  panel.className = "edit-modal-row open";
+  panel.innerHTML = "<td colspan='7'>"
+    + "<div class='edit-modal-grid'>"
+    + "<div class='fg span2'><label>Descripci\u00f3n</label>"
+    + "<input type='text' id='ed-desc-" + id + "' value='" + e.desc.replace(/'/g, "&#39;") + "'/></div>"
+    + "<div class='fg'><label>Monto</label>"
+    + "<input type='number' id='ed-amt-" + id + "' value='" + e.amount + "' min='1' step='100'/></div>"
+    + "<div class='fg'><label>Moneda</label>"
+    + "<select id='ed-mon-" + id + "'>" + monOpts + "</select></div>"
+    + "<div class='fg'><label>Fecha</label>"
+    + "<input type='date' id='ed-date-" + id + "' value='" + e.date + "'/></div>"
+    + "<div class='fg'><label>Categor\u00eda</label>"
+    + "<select id='ed-cat-" + id + "'>" + catOpts + "</select></div>"
+    + "<div class='fg'><label>Tipo</label>"
+    + "<select id='ed-type-" + id + "'>" + typeOpts + "</select></div>"
+    + "</div>"
+    + "<button class='btn-save-edit' onclick='saveEditExpense(" + id + ", " + e.person + ")'>Guardar cambios</button>"
+    + "<button class='btn-cancel-edit' onclick='closeEditExpense(" + id + ")'>Cancelar</button>"
+    + "</td>";
+
+  row.insertAdjacentElement("afterend", panel);
+}
+
+function closeEditExpense(id) {
+  const panel = document.getElementById("edit-row-" + id);
+  if (panel) panel.remove();
+}
+
+async function saveEditExpense(id, person) {
+  const desc      = document.getElementById("ed-desc-" + id)?.value.trim();
+  const amount    = parseFloat(document.getElementById("ed-amt-" + id)?.value);
+  const moneda    = document.getElementById("ed-mon-" + id)?.value || "CRC";
+  const date      = document.getElementById("ed-date-" + id)?.value;
+  const catId     = document.getElementById("ed-cat-" + id)?.value;
+  const typeVal   = document.getElementById("ed-type-" + id)?.value;
+
+  if (!desc)                     { showToast("Ingresa una descripci\u00f3n", "err"); return; }
+  if (isNaN(amount)||amount <= 0){ showToast("Ingresa un monto v\u00e1lido", "err"); return; }
+
+  const tipoCambio = moneda === "USD" ? getLastTipoCambio(person) : 1;
+  const amountCRC  = moneda === "USD" ? amount * tipoCambio : amount;
+  const type       = typeVal === "shared" ? "shared" : "p" + person;
+
+  const btn = document.querySelector("#edit-row-" + id + " .btn-save-edit");
+  if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }
+
+  try {
+    const { error } = await db.from(TABLE).update({
+      desc, amount, amount_crc: amountCRC,
+      cat_id:      catId,
+      type,
+      date,
+      moneda,
+      tipo_cambio: tipoCambio,
+    }).eq("id", id);
+
+    if (error) {
+      showToast("Error: " + (error.message || "al guardar"), "err");
+      if (btn) { btn.disabled = false; btn.textContent = "Guardar cambios"; }
+    } else {
+      showToast("\u2713 Gasto actualizado", "ok");
+      closeEditExpense(id);
+    }
+  } catch (e) {
+    showToast("Error: " + (e.message || String(e)), "err");
+    if (btn) { btn.disabled = false; btn.textContent = "Guardar cambios"; }
+  }
+}
+
 /* ─────────────────────────────────────────────────────────────
    3.11 CÁLCULOS
 ───────────────────────────────────────────────────────────── */
@@ -2100,10 +2236,13 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
         ? `<span class="currency-badge usd">USD</span>`
         : `<span class="currency-badge crc">CRC</span>`;
       const del = showDelete
-        ? `<td><button class="btn-del" onclick="deleteExpense(${e.id})" title="Eliminar">✕</button></td>`
+        ? `<td style="white-space:nowrap">
+            <button class="btn-edit" onclick="editExpense(${e.id})" title="Editar">✏️</button>
+            <button class="btn-del"  onclick="deleteExpense(${e.id})" title="Eliminar">✕</button>
+           </td>`
         : "";
 
-      return `<tr>
+      return `<tr id="exp-row-${e.id}">
           <td>${e.desc} ${badge}</td>
           <td>${amtDisplay}</td>
           <td class="col-dt">${e.date}</td>
