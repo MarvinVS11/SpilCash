@@ -573,6 +573,10 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <p class="sec">/ Desglose por Categoría</p>
       <div class="breakdown-grid" id="priv-breakdown-1"></div>
 
+      <!-- Formulario -->
+      <p class="sec">/ Registrar Gasto</p>
+      <div id="form-p1"></div>
+
       <!-- Módulo Ahorro -->
       <div class="module-section">
         <div class="mod-header">
@@ -592,10 +596,6 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         <div id="debt-add-form-1"></div>
         <div class="item-list" id="debt-list-1"></div>
       </div>
-
-      <!-- Formulario -->
-      <p class="sec">/ Registrar Gasto</p>
-      <div id="form-p1"></div>
 
       <!-- Acordeón -->
       <p class="sec">/ Mis Gastos del Período</p>
@@ -688,6 +688,10 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <p class="sec">/ Desglose por Categoría</p>
       <div class="breakdown-grid" id="priv-breakdown-2"></div>
 
+      <!-- Formulario -->
+      <p class="sec">/ Registrar Gasto</p>
+      <div id="form-p2"></div>
+
       <!-- Módulo Ahorro -->
       <div class="module-section">
         <div class="mod-header">
@@ -707,10 +711,6 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         <div id="debt-add-form-2"></div>
         <div class="item-list" id="debt-list-2"></div>
       </div>
-
-      <!-- Formulario -->
-      <p class="sec">/ Registrar Gasto</p>
-      <div id="form-p2"></div>
 
       <!-- Acordeón -->
       <p class="sec">/ Mis Gastos del Período</p>
@@ -870,15 +870,30 @@ function fmt(n) {
 ───────────────────────────────────────────────────────────── */
 function mapRow(r) {
   return {
-    id:     r.id,
-    desc:   r.desc,
-    amount: parseFloat(r.amount),
-    catId:  r.cat_id,
-    type:   r.type,              // 'shared' | 'p1' | 'p2'
-    person: r.person,            // 1 | 2
-    date:   r.date,
-    onCard: r.on_card === true,  // true = pagado con tarjeta → suma a deuda
+    id:        r.id,
+    desc:      r.desc,
+    amount:    parseFloat(r.amount),
+    amountCRC: parseFloat(r.amount_crc || r.amount),
+    catId:     r.cat_id,
+    type:      r.type,
+    person:    r.person,
+    date:      r.date,
+    onCard:    r.on_card === true,
+    moneda:    r.moneda     || "CRC",
+    tipoCambio:parseFloat(r.tipo_cambio || 1),
   };
+}
+
+function getLastTipoCambio(person) {
+  const usdDebt = debts
+    .filter(d => d.person === person && d.moneda === "USD" && d.tipo_cambio > 1)
+    .sort((a, b) => b.id - a.id)[0];
+  if (usdDebt) return usdDebt.tipo_cambio;
+  const usdExp = expenses
+    .filter(e => e.person === person && e.moneda === "USD" && e.tipoCambio > 1)
+    .sort((a, b) => b.id - a.id)[0];
+  if (usdExp) return usdExp.tipoCambio;
+  return 1;
 }
 
 async function loadExpenses() {
@@ -1541,13 +1556,15 @@ function buildBudgetRow(person) {
    3.10 AGREGAR / ELIMINAR GASTOS
 ───────────────────────────────────────────────────────────── */
 async function addExpense(person) {
-  const desc   = document.getElementById(`inp-desc-p${person}`).value.trim();
-  const amount = parseFloat(document.getElementById(`inp-amt-p${person}`).value);
-  const date   = document.getElementById(`inp-date-p${person}`).value || today();
-  const catId  = document.getElementById(`inp-cat-p${person}`).value;
-  const type   = document.getElementById(`inp-type-p${person}`).value;
-  // Leer estado del switch de tarjeta
-  const onCard = document.getElementById(`sw-card-p${person}`)?.checked === true;
+  const desc       = document.getElementById(`inp-desc-p${person}`).value.trim();
+  const amount     = parseFloat(document.getElementById(`inp-amt-p${person}`).value);
+  const date       = document.getElementById(`inp-date-p${person}`).value || today();
+  const catId      = document.getElementById(`inp-cat-p${person}`).value;
+  const type       = document.getElementById(`inp-type-p${person}`).value;
+  const onCard     = document.getElementById(`sw-card-p${person}`)?.checked === true;
+  const moneda     = document.getElementById(`inp-moneda-p${person}`)?.value || "CRC";
+  const tipoCambio = moneda === "USD" ? getLastTipoCambio(person) : 1;
+  const amountCRC  = moneda === "USD" ? amount * tipoCambio : amount;
 
   if (!desc)                    { document.getElementById(`inp-desc-p${person}`).focus(); return; }
   if (isNaN(amount)||amount<=0) { document.getElementById(`inp-amt-p${person}`).focus();  return; }
@@ -1557,10 +1574,12 @@ async function addExpense(person) {
 
   try {
     const { error } = await db.from(TABLE).insert({
-      desc, amount, cat_id: catId,
-      type:    type === "shared" ? "shared" : "p"+person,
-      person,  date,
-      on_card: onCard,   // true → suma a deuda; false → solo a categoría
+      desc, amount, amount_crc: amountCRC, cat_id: catId,
+      type:        type === "shared" ? "shared" : "p"+person,
+      person,      date,
+      on_card:     onCard,
+      moneda,
+      tipo_cambio: tipoCambio,
     });
 
     if (error) {
@@ -1620,9 +1639,10 @@ async function deleteExpense(id) {
 function calcTotals(arr) {
   let p1 = 0, p2 = 0, sh = 0;
   arr.forEach(e => {
-    if      (e.type === "p1")     p1 += e.amount;
-    else if (e.type === "p2")     p2 += e.amount;
-    else if (e.type === "shared") sh += e.amount;
+    const a = e.amountCRC || e.amount;
+    if      (e.type === "p1")     p1 += a;
+    else if (e.type === "p2")     p2 += a;
+    else if (e.type === "shared") sh += a;
   });
   return { p1, p2, sh, total: p1 + p2 + sh };
 }
@@ -1694,8 +1714,8 @@ function debtAmountDisplay(amount, moneda, tipo_cambio) {
  */
 function calcSaldo(person, arr, month, q) {
   const b        = getBudgetForPeriod(person, month, q);
-  const myInd    = arr.filter(e => e.type === "p" + person).reduce((s, e) => s + e.amount, 0);
-  const mySh     = arr.filter(e => e.type === "shared").reduce((s, e) => s + e.amount, 0) / 2;
+  const myInd    = arr.filter(e => e.type === "p" + person).reduce((s, e) => s + (e.amountCRC||e.amount), 0);
+  const mySh     = arr.filter(e => e.type === "shared").reduce((s, e) => s + (e.amountCRC||e.amount), 0) / 2;
   const cuotaSav = calcCuotaAhorro(person);
   const cuotaDebt= calcCuotaDeuda(person);
   return b.income - myInd - mySh - cuotaSav - cuotaDebt;
@@ -1778,136 +1798,150 @@ function renderPublic() {
 function renderPrivate(person) {
   if (!loggedIn[person]) return;
 
-  const mEl = document.getElementById("p"+person+"-month");
+  const mEl = document.getElementById("p" + person + "-month");
   if (!mEl.value) mEl.value = currentMonth();
   const month = mEl.value;
   const q     = privQ[person];
   const label = periodLabel(month, q);
 
   const filtered = filterByPeriod(expenses, month, q);
-  const myInd    = filtered.filter(e => e.type === "p"+person).reduce((s,e) => s+e.amount, 0);
-  const shTotal  = filtered.filter(e => e.type === "shared").reduce((s,e) => s+e.amount, 0);
+  const mine     = filtered.filter(e => e.person === person);
+  const myInd    = filtered.filter(e => e.type === "p"+person).reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+  const shTotal  = filtered.filter(e => e.type === "shared").reduce((s,e) => s+(e.amountCRC||e.amount), 0);
   const myShare  = shTotal / 2;
-  // Presupuesto del período activo (suma Q1+Q2 si es mes completo)
   const b        = getBudgetForPeriod(person, month, q);
-  // Saldo: income − gastos − ahorro (deudas NO restan)
   const saldo    = calcSaldo(person, filtered, month, q);
-  // Deudas con tarjeta por usuario, informativas
   const myDebt   = calcDebt(person, filtered);
   const debtOver = myDebt > b.income && b.income > 0;
 
-  // Tarjetas de resumen
-  document.getElementById(`pi-inc${person}`).textContent  = fmt(b.income);
-  document.getElementById(`pi-ind${person}`).textContent  = fmt(myInd);
-  document.getElementById(`pi-sh${person}`).textContent   = fmt(myShare);
-  document.getElementById(`pi-sav${person}`).textContent  = fmt(b.saving);
-  document.getElementById(`pi-sub${person}`).textContent  = label;
+  // Tarjetas resumen
+  document.getElementById("pi-inc"+person).textContent  = fmt(b.income);
+  document.getElementById("pi-ind"+person).textContent  = fmt(myInd);
+  document.getElementById("pi-sh"+person).textContent   = fmt(myShare);
+  document.getElementById("pi-sav"+person).textContent  = fmt(b.saving);
+  document.getElementById("pi-sub"+person).textContent  = label;
 
-  // Tarjeta deuda — rojo si supera el salario
-  const debtEl  = document.getElementById(`pi-debt${person}`);
-  const debtSub = debtEl?.nextElementSibling;
-  debtEl.textContent = fmt(myDebt);
-  debtEl.className   = "amt " + (debtOver ? "cneg" : "cdebt");
-  if (debtSub && debtSub.classList.contains("sub"))
-    debtSub.textContent = debtOver ? "⚠️ supera el salario" : "gastos con tarjeta";
+  const debtEl = document.getElementById("pi-debt"+person);
+  if (debtEl) {
+    debtEl.textContent = fmt(myDebt);
+    debtEl.className   = "amt " + (debtOver ? "cneg" : "cdebt");
+    const debtSub = debtEl.nextElementSibling;
+    if (debtSub && debtSub.classList.contains("sub"))
+      debtSub.textContent = debtOver ? "supera el salario" : "gastos con tarjeta";
+  }
 
-  // Saldo final — rojo si negativo
-  const balEl = document.getElementById(`pi-bal${person}`);
-  balEl.textContent = fmt(saldo);
-  balEl.className   = "amt " + (saldo < 0 ? "cneg" : "ctot");
+  const balEl = document.getElementById("pi-bal"+person);
+  if (balEl) {
+    balEl.textContent = fmt(saldo);
+    balEl.className   = "amt " + (saldo < 0 ? "cneg" : "ctot");
+  }
 
-  // Barra de saldo corriente
-  const saldoNum  = document.getElementById(`saldo-num-${person}`);
-  const saldoFill = document.getElementById(`saldo-fill-${person}`);
-  saldoNum.textContent = fmt(saldo);
-  saldoNum.className   = "saldo-num " + (saldo < 0 ? "neg" : "pos");
-  const pct = b.income > 0 ? Math.max(0, Math.min(100, (saldo / b.income) * 100)) : 0;
-  saldoFill.style.width      = pct + "%";
-  saldoFill.style.background = saldo < 0 ? "var(--danger)" : saldo < b.income * 0.2 ? "var(--warn)" : "var(--saving)";
+  // Barra saldo
+  const saldoNum  = document.getElementById("saldo-num-"+person);
+  const saldoFill = document.getElementById("saldo-fill-"+person);
+  if (saldoNum) {
+    saldoNum.textContent = fmt(saldo);
+    saldoNum.className   = "saldo-num " + (saldo < 0 ? "neg" : "pos");
+  }
+  if (saldoFill) {
+    const pct = b.income > 0 ? Math.max(0, Math.min(100, (saldo / b.income) * 100)) : 0;
+    saldoFill.style.width      = pct + "%";
+    saldoFill.style.background = saldo < 0 ? "var(--danger)" : saldo < b.income * 0.2 ? "var(--warn)" : "var(--saving)";
+  }
 
-  // Budget row — reconstruir para reflejar el período correcto
-  const brEl2 = document.getElementById(`budget-row-${person}`);
-  if (brEl2) brEl2.innerHTML = buildBudgetRow(person);
+  // Budget row
+  const brEl = document.getElementById("budget-row-"+person);
+  if (brEl) brEl.innerHTML = buildBudgetRow(person);
 
-  // Desglose privado por categoría
-  const mine = filtered.filter(e => e.person === person);
-  const bkEl = document.getElementById(`priv-breakdown-${person}`);
-  bkEl.innerHTML = "";
-  CATEGORIES.forEach(cat => {
-    const catMine   = mine.filter(e => e.catId === cat.id);
-    const total     = catMine.reduce((s,e) => s+e.amount, 0);
-    if (total === 0) return;
-    const sharedAmt = catMine.filter(e => e.type === "shared").reduce((s,e) => s+e.amount, 0);
-    const indAmt    = catMine.filter(e => e.type !== "shared").reduce((s,e) => s+e.amount, 0);
-    const cardAmt   = catMine.filter(e => e.onCard).reduce((s,e) => s+e.amount, 0);
-    const card      = document.createElement("div");
-    card.className  = "bk-card";
-    const shLine    = sharedAmt > 0
-      ? `<div class="bk-sh">compartido: ${fmt(sharedAmt/2)} (${fmt(sharedAmt)})</div>`
-      : `<div class="bk-sh">individual</div>`;
-    const cardLine  = cardAmt > 0
-      ? `<div class="bk-sh" style="color:var(--debt)">💳 tarjeta: ${fmt(cardAmt)}</div>`
-      : "";
-    card.innerHTML = `
-      <div class="bk-ico">${cat.icon}</div>
-      <div class="bk-cat">${cat.name}</div>
-      <div class="bk-amt">${fmt(indAmt + sharedAmt/2)}</div>
-      ${shLine}${cardLine}
-    `;
-    bkEl.appendChild(card);
-  });
-  if (bkEl.innerHTML === "") bkEl.innerHTML = `<p class="empty">Sin gastos este período</p>`;
+  // Desglose por categoria
+  const bkEl = document.getElementById("priv-breakdown-"+person);
+  if (bkEl) {
+    bkEl.innerHTML = "";
+    CATEGORIES.forEach(function(cat) {
+      const catMine   = mine.filter(e => e.catId === cat.id);
+      const total     = catMine.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      if (total === 0) return;
+      const sharedAmt = catMine.filter(e => e.type === "shared").reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      const indAmt    = catMine.filter(e => e.type !== "shared").reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      const cardAmt   = catMine.filter(e => e.onCard).reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      const card      = document.createElement("div");
+      card.className  = "bk-card";
+      const shLine    = sharedAmt > 0
+        ? "<div class='bk-sh'>compartido: " + fmt(sharedAmt/2) + " (" + fmt(sharedAmt) + ")</div>"
+        : "<div class='bk-sh'>individual</div>";
+      const cardLine  = cardAmt > 0
+        ? "<div class='bk-sh' style='color:var(--debt)'>tarjeta: " + fmt(cardAmt) + "</div>"
+        : "";
+      card.innerHTML  = "<div class='bk-ico'>" + cat.icon + "</div>"
+        + "<div class='bk-cat'>" + cat.name + "</div>"
+        + "<div class='bk-amt'>" + fmt(indAmt + sharedAmt/2) + "</div>"
+        + shLine + cardLine;
+      bkEl.appendChild(card);
+    });
+    if (bkEl.innerHTML === "") bkEl.innerHTML = "<p class='empty'>Sin gastos este periodo</p>";
+  }
 
-  // Resumen de cuotas
+  // Cuota summary — solo texto plano, sin emojis en el template
   const cuotaSav  = calcCuotaAhorro(person);
   const cuotaDebt = calcCuotaDeuda(person);
   const netSalary = b.income - cuotaSav - cuotaDebt;
-  const cuotaEl   = document.getElementById(`cuota-summary-${person}`);
-  if (cuotaEl) cuotaEl.innerHTML = `
-    <div class="cuota-row">
-      <span class="cuota-lbl">💼 Salario base</span>
-      <span class="cuota-val">${fmt(b.income)}</span>
-    </div>
-    <div class="cuota-row">
-      <span class="cuota-lbl">🏦 Cuotas ahorro</span>
-      <span class="cuota-val saving">− ${fmt(cuotaSav)}</span>
-    </div>
-    <div class="cuota-row">
-      <span class="cuota-lbl">💳 Cuotas deuda</span>
-      <span class="cuota-val debt">− ${fmt(cuotaDebt)}</span>
-    </div>
-    <div class="cuota-row" style="border-top:1px solid var(--border);padding-top:6px;margin-top:2px">
-      <span class="cuota-lbl">📊 Salario neto para gastos</span>
-      <span class="cuota-val ${netSalary < 0 ? 'neg' : 'net'}">${fmt(netSalary)}</span>
-    </div>
-  `;
+  const cuotaEl   = document.getElementById("cuota-summary-"+person);
+  if (cuotaEl) {
+    cuotaEl.innerHTML =
+      "<div class='cuota-row'><span class='cuota-lbl'>Salario base</span><span class='cuota-val'>" + fmt(b.income) + "</span></div>" +
+      "<div class='cuota-row'><span class='cuota-lbl'>Cuotas ahorro</span><span class='cuota-val saving'>- " + fmt(cuotaSav) + "</span></div>" +
+      "<div class='cuota-row'><span class='cuota-lbl'>Cuotas deuda</span><span class='cuota-val debt'>- " + fmt(cuotaDebt) + "</span></div>" +
+      "<div class='cuota-row' style='border-top:1px solid var(--border);padding-top:6px;margin-top:2px'>" +
+        "<span class='cuota-lbl'>Salario neto para gastos</span>" +
+        "<span class='cuota-val " + (netSalary < 0 ? "neg" : "net") + "'>" + fmt(netSalary) + "</span>" +
+      "</div>";
+  }
 
-  // Gráfico circular
-  const totalGastos  = myInd + myShare;
-  renderChart(person, b.income, cuotaSav, cuotaDebt, totalGastos);
+  // Grafico circular
+  try {
+    renderChart(person, b.income, cuotaSav, cuotaDebt, myInd + myShare);
+  } catch(err) { console.warn("renderChart:", err.message); }
 
-  // Módulos ahorro y deuda
-  renderSavings(person);
-  renderDebts(person);
+  // Modulos ahorro y deuda
+  try { renderSavings(person); } catch(err) { console.warn("renderSavings:", err.message); }
+  try { renderDebts(person);   } catch(err) { console.warn("renderDebts:",   err.message); }
 
-  // Formulario
-  document.getElementById("form-p"+person).innerHTML = buildForm(person);
+  // Formulario de nuevo gasto
+  var formEl = document.getElementById("form-p"+person);
+  if (formEl) {
+    try {
+      formEl.innerHTML = buildForm(person);
+    } catch(err) {
+      console.warn("buildForm error:", err.message);
+      formEl.innerHTML = "<p style='color:var(--danger);padding:10px'>Error cargando formulario: " + err.message + "</p>";
+    }
+  }
 
-  // Acordeón
-  const container = document.getElementById("priv-cats-p"+person);
-  container.innerHTML = "";
-  CATEGORIES.forEach(cat => {
-    const catExp = mine.filter(e => e.catId === cat.id);
-    const catTot = catExp.reduce((s,e) => s+e.amount, 0);
-    container.appendChild(buildAccordion(cat, catExp, catTot, true));
-  });
+  // Acordeon de gastos
+  var container = document.getElementById("priv-cats-p"+person);
+  if (container) {
+    container.innerHTML = "";
+    CATEGORIES.forEach(function(cat) {
+      var catExp = mine.filter(e => e.catId === cat.id);
+      var catTot = catExp.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      try {
+        container.appendChild(buildAccordion(cat, catExp, catTot, true));
+      } catch(err) {
+        console.warn("buildAccordion " + cat.id + ":", err.message);
+      }
+    });
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────
    3.14 COMPONENTES HTML
 ───────────────────────────────────────────────────────────── */
 function buildForm(person) {
-  const catOpts = CATEGORIES.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join("");
+  const catOpts = CATEGORIES.map(cat => `<option value="${cat.id}">${cat.icon} ${cat.name}</option>`).join("");
+  const lastTC  = getLastTipoCambio(person);
+  const tcText  = lastTC > 1
+    ? "¢" + lastTC.toLocaleString() + " por $1"
+    : "Registra una deuda USD primero";
   return `
     <div class="add-form-wrap">
       <p class="add-form-title">Nuevo gasto — ${NAMES[person]}</p>
@@ -1918,7 +1952,19 @@ function buildForm(person) {
                  onkeydown="if(event.key==='Enter') addExpense(${person})"/>
         </div>
         <div class="fg">
-          <label>Monto ¢</label>
+          <label>Moneda</label>
+          <select id="inp-moneda-p${person}" onchange="updateMonedaUI(${person})">
+            <option value="CRC">¢ Colones (CRC)</option>
+            <option value="USD">$ Dólares (USD)</option>
+          </select>
+        </div>
+        <div class="fg" id="tc-info-p${person}" style="display:none">
+          <label>Tipo de cambio (auto)</label>
+          <input type="text" disabled value="${tcText}"
+                 style="opacity:0.6;cursor:not-allowed;font-size:0.75rem;background:var(--card2)"/>
+        </div>
+        <div class="fg">
+          <label id="inp-amt-lbl-p${person}">Monto ¢</label>
           <input type="number" id="inp-amt-p${person}" placeholder="0" min="1" step="100"/>
         </div>
         <div class="fg">
@@ -1954,21 +2000,52 @@ function buildForm(person) {
     </div>
   `;
 }
+function updateMonedaUI(person) {
+  const moneda = document.getElementById(`inp-moneda-p${person}`)?.value || "CRC";
+  const lbl    = document.getElementById(`inp-amt-lbl-p${person}`);
+  const tcWrap = document.getElementById(`tc-info-p${person}`);
+  if (lbl)    lbl.textContent = moneda === "USD" ? "Monto $" : "Monto \u00a2";
+  if (tcWrap) tcWrap.style.display = moneda === "USD" ? "flex" : "none";
+}
+
 
 function buildAccordion(cat, catExp, catTot, showDelete) {
   const block = document.createElement("div");
   block.className = "cat-block";
 
-  // Total del encabezado: si hay compartidos, mostrar mitad (total)
-  const sharedInCat = catExp.filter(e => e.type === "shared");
-  const indInCat    = catExp.filter(e => e.type !== "shared");
-  const shTot       = sharedInCat.reduce((s,e) => s+e.amount, 0);
-  const indTot      = indInCat.reduce((s,e)    => s+e.amount, 0);
-  let   displayTot;
-  if (showDelete && shTot > 0) {
-    displayTot = fmt(indTot + shTot/2) + ` <span style="font-size:0.65rem;color:var(--muted)">(${fmt(catTot)} total)</span>`;
+  const sharedExp = catExp.filter(e => e.type === "shared");
+  const indExp    = catExp.filter(e => e.type !== "shared");
+  const usdAll    = catExp.filter(e => e.moneda === "USD");
+  const crcAll    = catExp.filter(e => e.moneda !== "USD");
+
+  // ── Encabezado contraído: totales por moneda ──
+  let displayTot = "";
+  if (showDelete) {
+    const shUSD  = sharedExp.filter(e=>e.moneda==="USD").reduce((s,e)=>s+e.amount,0);
+    const shCRC  = sharedExp.filter(e=>e.moneda!=="USD").reduce((s,e)=>s+(e.amountCRC||e.amount),0);
+    const inUSD  = indExp.filter(e=>e.moneda==="USD").reduce((s,e)=>s+e.amount,0);
+    const inCRC  = indExp.filter(e=>e.moneda!=="USD").reduce((s,e)=>s+(e.amountCRC||e.amount),0);
+    const dispCRC = inCRC + shCRC/2;
+    const dispUSD = inUSD + shUSD/2;
+    const parts = [];
+    if (dispCRC > 0) parts.push(fmt(dispCRC));
+    if (dispUSD > 0) parts.push(`<span style="color:#60a5fa">${fmtUSD(dispUSD)}</span>`);
+    displayTot = parts.join(` <span style="color:var(--muted);font-size:0.7rem">+</span> `) || fmt(0);
+    if (sharedExp.length > 0) {
+      const n = [];
+      const tCRC = crcAll.reduce((s,e)=>s+(e.amountCRC||e.amount),0);
+      const tUSD = usdAll.reduce((s,e)=>s+e.amount,0);
+      if (tCRC > 0) n.push(fmt(tCRC));
+      if (tUSD > 0) n.push(fmtUSD(tUSD));
+      if (n.length) displayTot += ` <span style="font-size:0.62rem;color:var(--muted)">(${n.join(" + ")} total)</span>`;
+    }
   } else {
-    displayTot = fmt(catTot);
+    const tCRC = crcAll.reduce((s,e)=>s+(e.amountCRC||e.amount),0);
+    const tUSD = usdAll.reduce((s,e)=>s+e.amount,0);
+    const parts = [];
+    if (tCRC > 0) parts.push(`${fmt(tCRC/2)} <span style="font-size:0.62rem;color:var(--muted)">(${fmt(tCRC)})</span>`);
+    if (tUSD > 0) parts.push(`<span style="color:#60a5fa">${fmtUSD(tUSD/2)}</span> <span style="font-size:0.62rem;color:var(--muted)">(${fmtUSD(tUSD)})</span>`);
+    displayTot = parts.join(` <span style="color:var(--muted);font-size:0.7rem"> + </span> `) || fmt(0);
   }
 
   const head = document.createElement("div");
@@ -1994,29 +2071,40 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
     const delTh  = showDelete ? "<th></th>" : "";
 
     const rows = sorted.map(e => {
-      const q          = quincena(e.date);
-      const isShared   = e.type === "shared";
-      const whoClass   = isShared ? "t-sh" : e.type==="p1" ? "t-p1" : "t-p2";
-      const whoLbl     = isShared ? "compartido" : e.type==="p1" ? "Marvin" : "Karol";
-      const qClass     = q===1 ? "t-q1" : "t-q2";
-      const qLbl       = q===1 ? "Q1·1–15" : "Q2·16–31";
-      // Tag de forma de pago
-      const payTag     = e.onCard
-        ? `<span class="tag tag-card">💳 tarjeta</span>`
-        : `<span class="tag tag-cash">💵 efectivo</span>`;
+      const q        = quincena(e.date);
+      const isShared = e.type === "shared";
+      const isUSD    = e.moneda === "USD";
+      const tc       = e.tipoCambio || 1;
+      const whoClass = isShared ? "t-sh" : e.type==="p1" ? "t-p1" : "t-p2";
+      const whoLbl   = isShared ? "compartido" : e.type==="p1" ? "Marvin" : "Karol";
+      const qClass   = q===1 ? "t-q1" : "t-q2";
+      const qLbl     = q===1 ? "Q1·1-15" : "Q2·16-31";
+      const payTag   = e.onCard
+        ? `<span class="tag t-card">💳 tarjeta</span>`
+        : `<span style="font-size:0.57rem;color:var(--muted)">efectivo</span>`;
 
-      // Monto compartido → mitad (total)
-      const amtDisplay = isShared
-        ? `<span class="shared-display">${fmt(e.amount/2)}</span><span class="shared-total">(${fmt(e.amount)})</span>`
-        : fmt(e.amount);
+      let amtDisplay;
+      if (isUSD) {
+        const raw    = isShared ? e.amount/2 : e.amount;
+        const rawCRC = isShared ? (e.amountCRC||e.amount*tc)/2 : (e.amountCRC||e.amount*tc);
+        const totPart = isShared ? `<span class="shared-total">(${fmtUSD(e.amount)})</span>` : "";
+        amtDisplay = `<span class="shared-display" style="color:#60a5fa">${fmtUSD(raw)}</span>${totPart}`
+          + `<br><span style="font-size:0.62rem;color:var(--muted)">≈ ${fmt(rawCRC)}</span>`;
+      } else if (isShared) {
+        amtDisplay = `<span class="shared-display">${fmt(e.amount/2)}</span><span class="shared-total">(${fmt(e.amount)})</span>`;
+      } else {
+        amtDisplay = fmt(e.amount);
+      }
 
+      const badge = isUSD
+        ? `<span class="currency-badge usd">USD</span>`
+        : `<span class="currency-badge crc">CRC</span>`;
       const del = showDelete
         ? `<td><button class="btn-del" onclick="deleteExpense(${e.id})" title="Eliminar">✕</button></td>`
         : "";
 
-      return `
-        <tr>
-          <td>${e.desc}</td>
+      return `<tr>
+          <td>${e.desc} ${badge}</td>
           <td>${amtDisplay}</td>
           <td class="col-dt">${e.date}</td>
           <td class="col-q"><span class="tag ${qClass}">${qLbl}</span></td>
@@ -2028,16 +2116,11 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
 
     body.innerHTML = `
       <table class="expense-table">
-        <thead>
-          <tr>
-            <th>Descripción</th>
-            <th>Monto</th>
-            <th class="col-dt">Fecha</th>
-            <th class="col-q">Qna</th>
-            <th>Tipo</th>
-            <th>Pago</th>${delTh}
-          </tr>
-        </thead>
+        <thead><tr>
+          <th>Descripción</th><th>Monto</th>
+          <th class="col-dt">Fecha</th><th class="col-q">Qna</th>
+          <th>Tipo</th><th>Pago</th>${delTh}
+        </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
   }
