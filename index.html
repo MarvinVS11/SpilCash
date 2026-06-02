@@ -423,18 +423,45 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .edit-modal-row {
   background: var(--surface);
   border-top: 1px solid var(--border);
-  padding: 12px 8px;
+  padding: 10px 8px;
   display: none;
 }
 .edit-modal-row.open { display: block; }
 .edit-modal-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 8px;
-  margin-bottom: 10px;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
 }
-.edit-modal-grid .span2 { grid-column: span 2; }
-@media (max-width: 480px) { .edit-modal-grid .span2 { grid-column: span 1; } }
+.edit-modal-grid .row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+.edit-modal-grid .fg label {
+  font-size: 0.55rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 3px;
+}
+.edit-modal-grid .fg input,
+.edit-modal-grid .fg select {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 5px 7px;
+  font-family: inherit;
+  font-size: 0.75rem;
+  width: 100%;
+  transition: border-color var(--tr);
+}
+.edit-modal-grid .fg input:focus,
+.edit-modal-grid .fg select:focus { outline: none; border-color: var(--a1); }
+.edit-actions { display: flex; gap: 6px; align-items: center; }
 .btn-edit {
   background: none; border: none; color: var(--a1);
   cursor: pointer; font-size: 0.75rem; padding: 3px 6px;
@@ -443,16 +470,16 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .btn-edit:hover { background: rgba(91,138,255,0.15); }
 .btn-save-edit {
   background: var(--a1); color: #fff; border: none; border-radius: 6px;
-  padding: 7px 16px; font-family: inherit; font-size: 0.72rem;
+  padding: 6px 14px; font-family: inherit; font-size: 0.7rem;
   letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
-  transition: opacity var(--tr);
+  transition: opacity var(--tr); white-space: nowrap;
 }
 .btn-save-edit:hover { opacity: 0.85; }
 .btn-cancel-edit {
   background: var(--card2); color: var(--muted); border: 1.5px solid var(--border);
-  border-radius: 6px; padding: 7px 14px; font-family: inherit; font-size: 0.72rem;
+  border-radius: 6px; padding: 6px 12px; font-family: inherit; font-size: 0.7rem;
   letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
-  transition: var(--tr); margin-left: 6px;
+  transition: var(--tr); white-space: nowrap;
 }
 .btn-cancel-edit:hover { border-color: var(--danger); color: var(--danger); }
 
@@ -1703,12 +1730,15 @@ function editExpense(id) {
   panel.className = "edit-modal-row open";
   panel.innerHTML = "<td colspan='7'>"
     + "<div class='edit-modal-grid'>"
-    + "<div class='fg span2'><label>Descripci\u00f3n</label>"
+    // Fila 1: descripción (amplia) + monto + moneda
+    + "<div class='fg'><label>Descripci\u00f3n</label>"
     + "<input type='text' id='ed-desc-" + id + "' value='" + e.desc.replace(/'/g, "&#39;") + "'/></div>"
     + "<div class='fg'><label>Monto</label>"
     + "<input type='number' id='ed-amt-" + id + "' value='" + e.amount + "' min='1' step='100'/></div>"
     + "<div class='fg'><label>Moneda</label>"
     + "<select id='ed-mon-" + id + "'>" + monOpts + "</select></div>"
+    // Fila 2: fecha + categoría + tipo
+    + "<div class='row2'>"
     + "<div class='fg'><label>Fecha</label>"
     + "<input type='date' id='ed-date-" + id + "' value='" + e.date + "'/></div>"
     + "<div class='fg'><label>Categor\u00eda</label>"
@@ -1716,8 +1746,11 @@ function editExpense(id) {
     + "<div class='fg'><label>Tipo</label>"
     + "<select id='ed-type-" + id + "'>" + typeOpts + "</select></div>"
     + "</div>"
-    + "<button class='btn-save-edit' onclick='saveEditExpense(" + id + ", " + e.person + ")'>Guardar cambios</button>"
+    + "</div>"
+    + "<div class='edit-actions'>"
+    + "<button class='btn-save-edit' onclick='saveEditExpense(" + id + ", " + e.person + ")'>Guardar</button>"
     + "<button class='btn-cancel-edit' onclick='closeEditExpense(" + id + ")'>Cancelar</button>"
+    + "</div>"
     + "</td>";
 
   row.insertAdjacentElement("afterend", panel);
