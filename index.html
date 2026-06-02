@@ -67,8 +67,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 /* ── Period bar ── */
 .period-bar { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--r); padding: 10px 14px; display: flex; align-items: center; gap: 11px; flex-wrap: wrap; margin-bottom: 16px; }
 .period-bar label { font-size: 0.63rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
-.period-bar input[type="month"] { background: var(--surface); border: 1.5px solid var(--border); border-radius: 6px; color: var(--text); padding: 5px 9px; font-family: inherit; font-size: 0.79rem; cursor: pointer; }
-.period-bar input[type="month"]:focus { outline: none; border-color: var(--a1); }
+.period-bar input[type="month"],
+.period-bar .month-select { background: var(--surface); border: 1.5px solid var(--border); border-radius: 6px; color: var(--text); padding: 5px 9px; font-family: inherit; font-size: 0.79rem; cursor: pointer; }
+.period-bar input[type="month"]:focus,
+.period-bar .month-select:focus { outline: none; border-color: var(--a1); }
+.period-bar .month-select option { background: var(--surface); }
 .q-pills { display: flex; gap: 5px; flex-wrap: wrap; }
 .q-pill { background: transparent; border: 1.5px solid var(--border); color: var(--muted); padding: 3px 10px; border-radius: 20px; font-family: inherit; font-size: 0.65rem; letter-spacing: 1px; cursor: pointer; transition: var(--tr); white-space: nowrap; }
 .q-pill:hover { border-color: var(--sh); color: var(--sh); }
@@ -498,7 +501,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
     <p class="sec">/ Período</p>
     <div class="period-bar">
       <label>Mes:</label>
-      <input type="month" id="pub-month" onchange="renderPublic()"/>
+      <select id="pub-month" class="month-select" onchange="renderPublic()"></select>
       <label>Quincena:</label>
       <div class="q-pills">
         <button class="q-pill active" id="pub-q1" onclick="setPubQ(1)">1ª · 1–15</button>
@@ -560,7 +563,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Período -->
       <div class="period-bar">
         <label>Mes:</label>
-        <input type="month" id="p1-month" onchange="onMonthChange(1)"/>
+        <select id="p1-month" class="month-select" onchange="onMonthChange(1)"></select>
         <label>Quincena:</label>
         <div class="q-pills">
           <button class="q-pill active" id="p1-q1" onclick="setPrivQ(1,1)">1ª · 1–15</button>
@@ -675,7 +678,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Período -->
       <div class="period-bar">
         <label>Mes:</label>
-        <input type="month" id="p2-month" onchange="onMonthChange(2)"/>
+        <select id="p2-month" class="month-select" onchange="onMonthChange(2)"></select>
         <label>Quincena:</label>
         <div class="q-pills">
           <button class="q-pill active" id="p2-q1" onclick="setPrivQ(2,1)">1ª · 1–15</button>
@@ -841,6 +844,49 @@ let pubQ            = 1;
 const privQ         = { 1: 1, 2: 1 };
 const loggedIn      = { 1: false, 2: false };
 const PAGES         = ["public", "p1", "p2"];
+
+/* ─────────────────────────────────────────────────────────────
+   3.3b  SELECTOR DE MES PERSONALIZADO
+   ─────────────────────────────────────────────────────────────
+   Puebla los <select class="month-select"> con opciones
+   en formato "Jun 2026" para los últimos 12 meses y los
+   próximos 2, con el mes actual seleccionado por defecto.
+───────────────────────────────────────────────────────────── */
+const MES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+/**
+ * Genera las opciones del selector de mes.
+ * Muestra 12 meses anteriores + mes actual + 2 futuros.
+ * value sigue siendo "YYYY-MM" para compatibilidad con el resto del código.
+ */
+function buildMonthOptions(selectedValue) {
+  const now    = new Date();
+  const opts   = [];
+  // Desde 12 meses atrás hasta 2 meses adelante
+  for (let delta = -12; delta <= 2; delta++) {
+    const d   = new Date(now.getFullYear(), now.getMonth() + delta, 1);
+    const val = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    const lbl = MES_CORTO[d.getMonth()] + " " + d.getFullYear();
+    const sel = val === selectedValue ? " selected" : "";
+    opts.push("<option value='" + val + "'" + sel + ">" + lbl + "</option>");
+  }
+  return opts.join("");
+}
+
+/**
+ * Inicializa (o actualiza) todos los selectores de mes en la página.
+ * Llámalo al arrancar y cuando necesites refrescar las opciones.
+ */
+function initMonthSelects() {
+  const current = currentMonth();
+  ["pub-month", "p1-month", "p2-month"].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prev = el.value || current;
+    el.innerHTML = buildMonthOptions(prev);
+    if (!el.value) el.value = current;
+  });
+}
 
 /* ─────────────────────────────────────────────────────────────
    3.4  UTILIDADES DE FECHA Y PERÍODO
@@ -1026,8 +1072,7 @@ function tryLogin(person) {
     errEl.style.display = "none";
     document.getElementById("login-p"+person).style.display  = "none";
     document.getElementById("panel-p"+person).style.display  = "block";
-    const mEl = document.getElementById("p"+person+"-month");
-    if (!mEl.value) mEl.value = currentMonth();
+    initMonthSelects();
     renderPrivate(person);
   } else {
     errEl.style.display = "block";
@@ -2293,7 +2338,7 @@ function renderAll() {
   if (loggedIn[2]) renderPrivate(2);
 }
 
-document.getElementById("pub-month").value = currentMonth();
+initMonthSelects();
 Promise.all([loadExpenses(), loadBudgets(), loadSavings(), loadDebts()])
   .then(() => {
     subscribeRealtime();
