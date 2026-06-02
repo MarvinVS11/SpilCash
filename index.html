@@ -1930,22 +1930,22 @@ function buildForm(person) {
   const catOpts = CATEGORIES.map(cat => `<option value="${cat.id}">${cat.icon} ${cat.name}</option>`).join("");
   const lastTC  = getLastTipoCambio(person);
   const tcText  = lastTC > 1
-    ? "\u00a2" + lastTC.toLocaleString() + " por $1"
+    ? "¢" + lastTC.toLocaleString() + " por $1"
     : "Registra una deuda USD primero";
   return `
     <div class="add-form-wrap">
-      <p class="add-form-title">Nuevo gasto &mdash; ${NAMES[person]}</p>
+      <p class="add-form-title">Nuevo gasto — ${NAMES[person]}</p>
       <div class="add-grid">
         <div class="fg span2">
-          <label>Descripci&oacute;n</label>
-          <input type="text" id="inp-desc-p${person}" placeholder="Ej: Supermercado&hellip;"
+          <label>Descripción</label>
+          <input type="text" id="inp-desc-p${person}" placeholder="Ej: Supermercado…"
                  onkeydown="if(event.key==='Enter') addExpense(${person})"/>
         </div>
         <div class="fg">
           <label>Moneda</label>
           <select id="inp-moneda-p${person}" onchange="updateMonedaUI(${person})">
-            <option value="CRC">&cent; Colones (CRC)</option>
-            <option value="USD">$ D&oacute;lares (USD)</option>
+            <option value="CRC">¢ Colones (CRC)</option>
+            <option value="USD">$ Dólares (USD)</option>
           </select>
         </div>
         <div class="fg" id="tc-info-p${person}" style="display:none">
@@ -1954,7 +1954,7 @@ function buildForm(person) {
                  style="opacity:0.6;cursor:not-allowed;font-size:0.75rem;background:var(--card2)"/>
         </div>
         <div class="fg">
-          <label id="inp-amt-lbl-p${person}">Monto &cent;</label>
+          <label id="inp-amt-lbl-p${person}">Monto ¢</label>
           <input type="number" id="inp-amt-p${person}" placeholder="0" min="1" step="100"/>
         </div>
         <div class="fg">
@@ -1962,21 +1962,21 @@ function buildForm(person) {
           <input type="date" id="inp-date-p${person}" value="${today()}"/>
         </div>
         <div class="fg">
-          <label>Categor&iacute;a</label>
+          <label>Categoría</label>
           <select id="inp-cat-p${person}">${catOpts}</select>
         </div>
         <div class="fg">
           <label>Tipo</label>
           <select id="inp-type-p${person}">
-            <option value="individual">Solo m&iacute;o (individual)</option>
-            <option value="shared">Compartido (&divide; 2)</option>
+            <option value="individual">Solo mío (individual)</option>
+            <option value="shared">Compartido (÷ 2)</option>
           </select>
         </div>
         <div class="fg">
           <label>Forma de pago</label>
           <div class="switch-row" id="sw-row-p${person}"
                onclick="document.getElementById('sw-card-p${person}').click()">
-            <span class="sw-lbl" id="sw-lbl-p${person}">&#128181; Sin tarjeta &mdash; solo categor&iacute;a</span>
+            <span class="sw-lbl" id="sw-lbl-p${person}">💵 Sin tarjeta — solo categoría</span>
             <div class="switch-wrap">
               <input type="checkbox" id="sw-card-p${person}"
                      onchange="updateSwitchUI(${person})"
@@ -1990,7 +1990,6 @@ function buildForm(person) {
     </div>
   `;
 }
-
 function updateMonedaUI(person) {
   const moneda = document.getElementById(`inp-moneda-p${person}`)?.value || "CRC";
   const lbl    = document.getElementById(`inp-amt-lbl-p${person}`);
@@ -2004,45 +2003,39 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
   const block = document.createElement("div");
   block.className = "cat-block";
 
-  // ── Separar gastos por moneda ──────────────────────────────
-  const sharedExp  = catExp.filter(e => e.type === "shared");
-  const indExp     = catExp.filter(e => e.type !== "shared");
-  const usdAll     = catExp.filter(e => e.moneda === "USD");
-  const crcAll     = catExp.filter(e => e.moneda !== "USD");
+  const sharedExp = catExp.filter(e => e.type === "shared");
+  const indExp    = catExp.filter(e => e.type !== "shared");
+  const usdAll    = catExp.filter(e => e.moneda === "USD");
+  const crcAll    = catExp.filter(e => e.moneda !== "USD");
 
-  // ── Total encabezado (contraído) ───────────────────────────
-  // Mostrar ¢ y $ por separado si hay ambas monedas
+  // ── Encabezado contraído: totales por moneda ──
   let displayTot = "";
   if (showDelete) {
-    // Vista privada: individuales + mitad compartidos, por moneda
-    const shUSD = sharedExp.filter(e=>e.moneda==="USD").reduce((s,e)=>s+e.amount,0);
-    const shCRC = sharedExp.filter(e=>e.moneda!=="USD").reduce((s,e)=>s+(e.amountCRC||e.amount),0);
-    const inUSD = indExp.filter(e=>e.moneda==="USD").reduce((s,e)=>s+e.amount,0);
-    const inCRC = indExp.filter(e=>e.moneda!=="USD").reduce((s,e)=>s+(e.amountCRC||e.amount),0);
+    const shUSD  = sharedExp.filter(e=>e.moneda==="USD").reduce((s,e)=>s+e.amount,0);
+    const shCRC  = sharedExp.filter(e=>e.moneda!=="USD").reduce((s,e)=>s+(e.amountCRC||e.amount),0);
+    const inUSD  = indExp.filter(e=>e.moneda==="USD").reduce((s,e)=>s+e.amount,0);
+    const inCRC  = indExp.filter(e=>e.moneda!=="USD").reduce((s,e)=>s+(e.amountCRC||e.amount),0);
     const dispCRC = inCRC + shCRC/2;
     const dispUSD = inUSD + shUSD/2;
     const parts = [];
     if (dispCRC > 0) parts.push(fmt(dispCRC));
     if (dispUSD > 0) parts.push(`<span style="color:#60a5fa">${fmtUSD(dispUSD)}</span>`);
-    displayTot = parts.join(' <span style="color:var(--muted);font-size:0.7rem">+</span> ') || fmt(0);
-    // Nota del total si hay compartidos
-    const totPartsNote = [];
-    const totCRCAll = crcAll.reduce((s,e)=>s+(e.amountCRC||e.amount),0);
-    const totUSDAll = usdAll.reduce((s,e)=>s+e.amount,0);
+    displayTot = parts.join(` <span style="color:var(--muted);font-size:0.7rem">+</span> `) || fmt(0);
     if (sharedExp.length > 0) {
       const n = [];
-      if (totCRCAll > 0) n.push(fmt(totCRCAll));
-      if (totUSDAll > 0) n.push(fmtUSD(totUSDAll));
+      const tCRC = crcAll.reduce((s,e)=>s+(e.amountCRC||e.amount),0);
+      const tUSD = usdAll.reduce((s,e)=>s+e.amount,0);
+      if (tCRC > 0) n.push(fmt(tCRC));
+      if (tUSD > 0) n.push(fmtUSD(tUSD));
       if (n.length) displayTot += ` <span style="font-size:0.62rem;color:var(--muted)">(${n.join(" + ")} total)</span>`;
     }
   } else {
-    // Vista pública: compartidos ÷ 2
-    const totCRC = crcAll.reduce((s,e)=>s+(e.amountCRC||e.amount),0);
-    const totUSD = usdAll.reduce((s,e)=>s+e.amount,0);
+    const tCRC = crcAll.reduce((s,e)=>s+(e.amountCRC||e.amount),0);
+    const tUSD = usdAll.reduce((s,e)=>s+e.amount,0);
     const parts = [];
-    if (totCRC > 0) parts.push(fmt(totCRC/2) + ` <span style="font-size:0.62rem;color:var(--muted)">(${fmt(totCRC)})</span>`);
-    if (totUSD > 0) parts.push(`<span style="color:#60a5fa">${fmtUSD(totUSD/2)}</span> <span style="font-size:0.62rem;color:var(--muted)">(${fmtUSD(totUSD)})</span>`);
-    displayTot = parts.join(' <span style="color:var(--muted);font-size:0.7rem"> + </span> ') || fmt(0);
+    if (tCRC > 0) parts.push(`${fmt(tCRC/2)} <span style="font-size:0.62rem;color:var(--muted)">(${fmt(tCRC)})</span>`);
+    if (tUSD > 0) parts.push(`<span style="color:#60a5fa">${fmtUSD(tUSD/2)}</span> <span style="font-size:0.62rem;color:var(--muted)">(${fmtUSD(tUSD)})</span>`);
+    displayTot = parts.join(` <span style="color:var(--muted);font-size:0.7rem"> + </span> `) || fmt(0);
   }
 
   const head = document.createElement("div");
@@ -2054,7 +2047,7 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
       <span class="cat-cnt">${catExp.length} gasto${catExp.length!==1?"s":""}</span>
     </div>
     <span class="cat-tot">${displayTot}</span>
-    <span class="cat-arr">&#9660;</span>
+    <span class="cat-arr">▼</span>
   `;
   head.onclick = () => block.classList.toggle("open");
 
@@ -2062,7 +2055,7 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
   body.className = "cat-body";
 
   if (catExp.length === 0) {
-    body.innerHTML = `<p class="empty">Sin gastos en esta categor&iacute;a para el per&iacute;odo</p>`;
+    body.innerHTML = `<p class="empty">Sin gastos en esta categoría para el período</p>`;
   } else {
     const sorted = [...catExp].sort((a,b) => b.date.localeCompare(a.date));
     const delTh  = showDelete ? "<th></th>" : "";
@@ -2072,43 +2065,35 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
       const isShared = e.type === "shared";
       const isUSD    = e.moneda === "USD";
       const tc       = e.tipoCambio || 1;
-
       const whoClass = isShared ? "t-sh" : e.type==="p1" ? "t-p1" : "t-p2";
       const whoLbl   = isShared ? "compartido" : e.type==="p1" ? "Marvin" : "Karol";
       const qClass   = q===1 ? "t-q1" : "t-q2";
-      const qLbl     = q===1 ? "Q1&middot;1&ndash;15" : "Q2&middot;16&ndash;31";
-
-      // Forma de pago — sin emojis que causen problemas
-      const payTag = e.onCard
-        ? `<span class="tag t-card">&#128179; tarjeta</span>`
+      const qLbl     = q===1 ? "Q1·1-15" : "Q2·16-31";
+      const payTag   = e.onCard
+        ? `<span class="tag t-card">💳 tarjeta</span>`
         : `<span style="font-size:0.57rem;color:var(--muted)">efectivo</span>`;
 
-      // ── Monto con símbolo y equivalencia ────────────────────
       let amtDisplay;
       if (isUSD) {
-        const raw     = isShared ? e.amount / 2 : e.amount;
-        const rawCRC  = isShared ? (e.amountCRC||e.amount*tc)/2 : (e.amountCRC||e.amount*tc);
+        const raw    = isShared ? e.amount/2 : e.amount;
+        const rawCRC = isShared ? (e.amountCRC||e.amount*tc)/2 : (e.amountCRC||e.amount*tc);
         const totPart = isShared ? `<span class="shared-total">(${fmtUSD(e.amount)})</span>` : "";
         amtDisplay = `<span class="shared-display" style="color:#60a5fa">${fmtUSD(raw)}</span>${totPart}`
-          + `<br><span style="font-size:0.62rem;color:var(--muted)">&asymp; ${fmt(rawCRC)}</span>`;
+          + `<br><span style="font-size:0.62rem;color:var(--muted)">≈ ${fmt(rawCRC)}</span>`;
       } else if (isShared) {
-        amtDisplay = `<span class="shared-display">${fmt(e.amount/2)}</span>`
-          + `<span class="shared-total">(${fmt(e.amount)})</span>`;
+        amtDisplay = `<span class="shared-display">${fmt(e.amount/2)}</span><span class="shared-total">(${fmt(e.amount)})</span>`;
       } else {
         amtDisplay = fmt(e.amount);
       }
 
-      // Badge de moneda
       const badge = isUSD
         ? `<span class="currency-badge usd">USD</span>`
         : `<span class="currency-badge crc">CRC</span>`;
-
       const del = showDelete
-        ? `<td><button class="btn-del" onclick="deleteExpense(${e.id})" title="Eliminar">&#10005;</button></td>`
+        ? `<td><button class="btn-del" onclick="deleteExpense(${e.id})" title="Eliminar">✕</button></td>`
         : "";
 
-      return `
-        <tr>
+      return `<tr>
           <td>${e.desc} ${badge}</td>
           <td>${amtDisplay}</td>
           <td class="col-dt">${e.date}</td>
@@ -2121,16 +2106,11 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
 
     body.innerHTML = `
       <table class="expense-table">
-        <thead>
-          <tr>
-            <th>Descripci&oacute;n</th>
-            <th>Monto</th>
-            <th class="col-dt">Fecha</th>
-            <th class="col-q">Qna</th>
-            <th>Tipo</th>
-            <th>Pago</th>${delTh}
-          </tr>
-        </thead>
+        <thead><tr>
+          <th>Descripción</th><th>Monto</th>
+          <th class="col-dt">Fecha</th><th class="col-q">Qna</th>
+          <th>Tipo</th><th>Pago</th>${delTh}
+        </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
   }
