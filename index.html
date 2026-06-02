@@ -423,29 +423,37 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .edit-modal-row {
   background: var(--surface);
   border-top: 1px solid var(--border);
-  padding: 10px 8px;
+  padding: 8px;
   display: none;
 }
 .edit-modal-row.open { display: block; }
 .edit-modal-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  gap: 6px;
-  margin-bottom: 8px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 5px;
+  align-items: flex-end;
+  overflow-x: auto;
+  margin-bottom: 7px;
+  padding-bottom: 2px;
 }
-.edit-modal-grid .row2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 6px;
-  grid-column: 1 / -1;
+.edit-modal-grid .fg {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
 }
+.edit-modal-grid .fg.fg-desc  { flex: 2; min-width: 110px; }
+.edit-modal-grid .fg.fg-amt   { width: 80px; }
+.edit-modal-grid .fg.fg-mon   { width: 90px; }
+.edit-modal-grid .fg.fg-date  { width: 110px; }
+.edit-modal-grid .fg.fg-cat   { width: 110px; }
+.edit-modal-grid .fg.fg-type  { width: 90px; }
 .edit-modal-grid .fg label {
-  font-size: 0.55rem;
+  font-size: 0.52rem;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--muted);
-  display: block;
-  margin-bottom: 3px;
+  white-space: nowrap;
 }
 .edit-modal-grid .fg input,
 .edit-modal-grid .fg select {
@@ -453,15 +461,15 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   border: 1.5px solid var(--border);
   border-radius: 6px;
   color: var(--text);
-  padding: 5px 7px;
+  padding: 5px 6px;
   font-family: inherit;
-  font-size: 0.75rem;
+  font-size: 0.73rem;
   width: 100%;
   transition: border-color var(--tr);
 }
 .edit-modal-grid .fg input:focus,
 .edit-modal-grid .fg select:focus { outline: none; border-color: var(--a1); }
-.edit-actions { display: flex; gap: 6px; align-items: center; }
+.edit-actions { display: flex; gap: 6px; }
 .btn-edit {
   background: none; border: none; color: var(--a1);
   cursor: pointer; font-size: 0.75rem; padding: 3px 6px;
@@ -1730,22 +1738,18 @@ function editExpense(id) {
   panel.className = "edit-modal-row open";
   panel.innerHTML = "<td colspan='7'>"
     + "<div class='edit-modal-grid'>"
-    // Fila 1: descripción (amplia) + monto + moneda
-    + "<div class='fg'><label>Descripci\u00f3n</label>"
+    + "<div class='fg fg-desc'><label>Descripci\u00f3n</label>"
     + "<input type='text' id='ed-desc-" + id + "' value='" + e.desc.replace(/'/g, "&#39;") + "'/></div>"
-    + "<div class='fg'><label>Monto</label>"
+    + "<div class='fg fg-amt'><label>Monto</label>"
     + "<input type='number' id='ed-amt-" + id + "' value='" + e.amount + "' min='1' step='100'/></div>"
-    + "<div class='fg'><label>Moneda</label>"
+    + "<div class='fg fg-mon'><label>Moneda</label>"
     + "<select id='ed-mon-" + id + "'>" + monOpts + "</select></div>"
-    // Fila 2: fecha + categoría + tipo
-    + "<div class='row2'>"
-    + "<div class='fg'><label>Fecha</label>"
+    + "<div class='fg fg-date'><label>Fecha</label>"
     + "<input type='date' id='ed-date-" + id + "' value='" + e.date + "'/></div>"
-    + "<div class='fg'><label>Categor\u00eda</label>"
+    + "<div class='fg fg-cat'><label>Categor\u00eda</label>"
     + "<select id='ed-cat-" + id + "'>" + catOpts + "</select></div>"
-    + "<div class='fg'><label>Tipo</label>"
+    + "<div class='fg fg-type'><label>Tipo</label>"
     + "<select id='ed-type-" + id + "'>" + typeOpts + "</select></div>"
-    + "</div>"
     + "</div>"
     + "<div class='edit-actions'>"
     + "<button class='btn-save-edit' onclick='saveEditExpense(" + id + ", " + e.person + ")'>Guardar</button>"
