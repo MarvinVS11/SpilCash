@@ -144,11 +144,23 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .cat-tot { font-size: 0.78rem; color: var(--sh); font-weight: 700; white-space: nowrap; margin-right: 8px; }
 .cat-arr { font-size: 0.57rem; color: var(--muted); transition: transform var(--tr); }
 .cat-block.open .cat-arr { transform: rotate(180deg); }
-.cat-body { display: none; padding: 0 12px 12px; border-top: 1px solid var(--border); }
+.cat-body { 
+  display: none; 
+  padding: 0 0 12px; 
+  border-top: 1px solid var(--border); 
+  overflow-x: auto; 
+  -webkit-overflow-scrolling: touch; 
+}
 .cat-block.open .cat-body { display: block; }
 
 /* ── Tabla gastos ── */
-.expense-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 4px; }
+.expense-table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  font-size: 0.75rem; 
+  margin-top: 4px; 
+  min-width: 500px; 
+}
 .expense-table th { text-align: left; color: var(--muted); font-size: 0.59rem; letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 5px 5px; border-bottom: 1px solid var(--border); }
 .expense-table td { padding: 6px 5px; border-bottom: 1px dashed rgba(44,49,84,0.5); vertical-align: middle; }
 .expense-table tr:last-child td { border-bottom: none; }
@@ -228,20 +240,198 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 5px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Switch tarjeta ── */
+.switch-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: nowrap;
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 6px; padding: 7px 10px;
+  transition: border-color var(--tr);
+  user-select: none; cursor: pointer;
+}
+.switch-row:hover { border-color: var(--debt); }
+.switch-row.active-card { border-color: var(--debt); background: rgba(251,146,60,0.08); }
+.switch-row .sw-lbl {
+  font-size: 0.72rem; letter-spacing: 0.5px; color: var(--muted); flex: 1;
+  transition: color var(--tr);
+}
+.switch-row.active-card .sw-lbl { color: var(--debt); }
+.switch-wrap {
+  position: relative; width: 36px; height: 20px; flex-shrink: 0;
+}
+.switch-wrap input[type="checkbox"] { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch-track {
+  position: absolute; inset: 0; border-radius: 20px;
+  background: var(--border); transition: background 0.25s;
+  cursor: pointer;
+}
+.switch-wrap input:checked + .switch-track { background: var(--debt); }
+.switch-track::before {
+  content: ""; position: absolute;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; top: 3px; left: 3px;
+  transition: transform 0.25s;
+}
+.switch-wrap input:checked + .switch-track::before { transform: translateX(16px); }
+/* tag visual en tabla */
+.tag-card { background: rgba(251,146,60,0.18); color: var(--debt); }
+.tag-cash { background: rgba(107,113,148,0.18); color: var(--muted); }
+
 /* ── Toast ── */
 #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); padding: 8px 20px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; z-index: 999; transition: transform 0.28s ease; white-space: nowrap; }
 #toast.ok  { background: var(--sh);     color: #0d1a16; }
 #toast.err { background: var(--danger); color: #fff;    }
 #toast.show { transform: translateX(-50%) translateY(0); }
 
+/* ── Módulos Ahorro y Deuda ── */
+.module-section { margin-bottom: 22px; }
+
+.mod-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+}
+.mod-header-title {
+  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 3px; color: var(--muted);
+}
+.btn-add-item {
+  background: transparent; border: 1.5px solid var(--border); color: var(--muted);
+  padding: 5px 12px; border-radius: 6px; cursor: pointer; font-family: inherit;
+  font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; transition: var(--tr);
+}
+.btn-add-item:hover { border-color: var(--sh); color: var(--sh); }
+
+.item-list { display: flex; flex-direction: column; gap: 10px; }
+
+.item-card {
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 14px 15px;
+}
+.item-card.saving-card { border-left: 3px solid var(--saving); }
+.item-card.debt-usd   { border-left: 3px solid #60a5fa; }  /* azul para deudas USD */
+
+.currency-badge {
+  display: inline-block; font-size: 0.58rem; font-weight: 700;
+  padding: 2px 7px; border-radius: 10px; letter-spacing: 1px;
+  text-transform: uppercase; vertical-align: middle; margin-left: 6px;
+}
+.currency-badge.crc { background: rgba(62,207,170,0.15); color: var(--sh);   }
+.currency-badge.usd { background: rgba(96,165,250,0.18); color: #60a5fa;     }
+
+.tc-note {
+  font-size: 0.62rem; color: var(--muted); margin-top: 4px; text-align: right;
+}
+.item-card.debt-card   { border-left: 3px solid var(--debt); }
+
+.item-card-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 8px; margin-bottom: 10px;
+}
+.item-card-title {
+  font-size: 0.82rem; font-weight: 700; color: var(--text); flex: 1;
+}
+.item-card-del {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 0.75rem; padding: 2px 5px; border-radius: 4px;
+  transition: color var(--tr), background var(--tr); flex-shrink: 0;
+}
+.item-card-del:hover { color: var(--danger); background: rgba(255,77,109,0.12); }
+
+.item-amounts {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px;
+}
+.item-amt-block { text-align: center; }
+.item-amt-lbl {
+  font-size: 0.56rem; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--muted); display: block; margin-bottom: 3px;
+}
+.item-amt-val {
+  font-size: 0.95rem; font-weight: 700;
+}
+.item-amt-val.goal  { color: var(--income); }
+.item-amt-val.done  { color: var(--saving); }
+.item-amt-val.pend  { color: var(--warn);   }
+.item-amt-val.dtot  { color: var(--debt);   }
+.item-amt-val.dqta  { color: var(--warn2);  }
+.item-amt-val.dpend { color: var(--danger); }
+.item-amt-val.dpend.ok { color: var(--saving); }
+
+.item-progress {
+  height: 7px; background: var(--border); border-radius: 4px; overflow: hidden;
+}
+.item-progress-fill {
+  height: 100%; border-radius: 4px; transition: width 0.5s ease, background 0.3s;
+}
+
+/* Formulario nuevo ítem inline */
+.item-add-form {
+  background: var(--surface); border: 1.5px dashed var(--border);
+  border-radius: var(--r); padding: 12px 14px; margin-top: 8px;
+}
+.item-add-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px; margin-bottom: 10px;
+}
+.item-add-grid .span2 { grid-column: span 2; }
+@media (max-width: 480px) { .item-add-grid .span2 { grid-column: span 1; } }
+
+/* Resumen de cuotas en tarjeta de saldo */
+.cuota-summary {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 10px 14px; margin-bottom: 14px;
+  font-size: 0.75rem;
+}
+.cuota-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 3px 0;
+}
+.cuota-row + .cuota-row { border-top: 1px dashed rgba(44,49,84,0.5); }
+.cuota-lbl { color: var(--muted); }
+.cuota-val { font-weight: 700; }
+.cuota-val.saving { color: var(--saving); }
+.cuota-val.debt   { color: var(--debt);   }
+.cuota-val.net    { color: var(--text);   }
+.cuota-val.neg    { color: var(--danger); }
+
+/* Gráfico circular */
+.chart-wrap {
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: var(--r); padding: 18px 16px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+}
+.chart-canvas-wrap { flex-shrink: 0; position: relative; width: 160px; height: 160px; }
+.chart-canvas-wrap canvas { width: 160px !important; height: 160px !important; }
+.chart-center-label {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  text-align: center; pointer-events: none;
+}
+.chart-center-label .cl-val {
+  font-size: 1rem; font-weight: 700; color: var(--text); white-space: nowrap;
+}
+.chart-center-label .cl-lbl {
+  font-size: 0.55rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
+}
+.chart-legend { flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: 7px; }
+.chart-legend-item {
+  display: flex; align-items: center; gap: 8px; font-size: 0.75rem;
+}
+.chart-legend-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.chart-legend-lbl { color: var(--muted); flex: 1; }
+.chart-legend-val { font-weight: 700; color: var(--text); }
+
 /* ── Responsive ── */
 @media (max-width: 520px) {
   header { padding: 10px 11px; }
   main   { padding: 12px 9px 60px; }
-  .expense-table .col-q  { display: none; }
+  
+  .summary-grid, .breakdown-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
 }
 @media (max-width: 380px) {
-  .expense-table .col-dt { display: none; }
+  .summary-grid, .breakdown-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
 }
 </style>
 </head>
@@ -331,7 +521,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Período -->
       <div class="period-bar">
         <label>Mes:</label>
-        <input type="month" id="p1-month" onchange="renderPrivate(1)"/>
+        <input type="month" id="p1-month" onchange="onMonthChange(1)"/>
         <label>Quincena:</label>
         <div class="q-pills">
           <button class="q-pill active" id="p1-q1" onclick="setPrivQ(1,1)">1ª · 1–15</button>
@@ -343,6 +533,22 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Ingresos / Ahorro / Deudas -->
       <p class="sec">/ Mi Presupuesto del Período</p>
       <div class="budget-row" id="budget-row-1"></div>
+
+      <!-- Gráfico circular distribución -->
+      <p class="sec">/ Distribución del Salario</p>
+      <div class="chart-wrap" id="chart-wrap-1">
+        <div class="chart-canvas-wrap">
+          <canvas id="chart-1"></canvas>
+          <div class="chart-center-label">
+            <div class="cl-val" id="chart-center-val-1">¢0</div>
+            <div class="cl-lbl">Saldo</div>
+          </div>
+        </div>
+        <div class="chart-legend" id="chart-legend-1"></div>
+      </div>
+
+      <!-- Cuotas descontadas del salario -->
+      <div class="cuota-summary" id="cuota-summary-1"></div>
 
       <!-- Saldo corriente -->
       <div class="saldo-bar" id="saldo-bar-1">
@@ -359,13 +565,33 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         <div class="sc"><div class="lbl">Mis gastos ind.</div><div class="amt c1" id="pi-ind1">¢0</div><div class="sub" id="pi-sub1">—</div></div>
         <div class="sc"><div class="lbl">Mi parte compartida</div><div class="amt cs" id="pi-sh1">¢0</div><div class="sub">50% de compartidos</div></div>
         <div class="sc"><div class="lbl">Ahorro</div><div class="amt csav" id="pi-sav1">¢0</div></div>
-        <div class="sc"><div class="lbl">Deudas</div><div class="amt cdebt" id="pi-debt1">¢0</div></div>
+        <div class="sc"><div class="lbl">Deudas con tarjeta</div><div class="amt cdebt" id="pi-debt1">¢0</div><div class="sub">gastos con tarjeta</div></div>
         <div class="sc"><div class="lbl">Saldo final</div><div class="amt ctot" id="pi-bal1">¢0</div></div>
       </div>
 
       <!-- Desglose por categoría -->
       <p class="sec">/ Desglose por Categoría</p>
       <div class="breakdown-grid" id="priv-breakdown-1"></div>
+
+      <!-- Módulo Ahorro -->
+      <div class="module-section">
+        <div class="mod-header">
+          <span class="mod-header-title">🏦 Mis Objetivos de Ahorro</span>
+          <button class="btn-add-item" onclick="showSavingForm(1)">+ Agregar objetivo</button>
+        </div>
+        <div id="saving-add-form-1"></div>
+        <div class="item-list" id="saving-list-1"></div>
+      </div>
+
+      <!-- Módulo Deudas -->
+      <div class="module-section">
+        <div class="mod-header">
+          <span class="mod-header-title">💳 Mis Deudas</span>
+          <button class="btn-add-item" onclick="showDebtForm(1)">+ Agregar deuda</button>
+        </div>
+        <div id="debt-add-form-1"></div>
+        <div class="item-list" id="debt-list-1"></div>
+      </div>
 
       <!-- Formulario -->
       <p class="sec">/ Registrar Gasto</p>
@@ -410,7 +636,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Período -->
       <div class="period-bar">
         <label>Mes:</label>
-        <input type="month" id="p2-month" onchange="renderPrivate(2)"/>
+        <input type="month" id="p2-month" onchange="onMonthChange(2)"/>
         <label>Quincena:</label>
         <div class="q-pills">
           <button class="q-pill active" id="p2-q1" onclick="setPrivQ(2,1)">1ª · 1–15</button>
@@ -422,6 +648,22 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Ingresos / Ahorro / Deudas -->
       <p class="sec">/ Mi Presupuesto del Período</p>
       <div class="budget-row" id="budget-row-2"></div>
+
+      <!-- Gráfico circular distribución -->
+      <p class="sec">/ Distribución del Salario</p>
+      <div class="chart-wrap" id="chart-wrap-2">
+        <div class="chart-canvas-wrap">
+          <canvas id="chart-2"></canvas>
+          <div class="chart-center-label">
+            <div class="cl-val" id="chart-center-val-2">¢0</div>
+            <div class="cl-lbl">Saldo</div>
+          </div>
+        </div>
+        <div class="chart-legend" id="chart-legend-2"></div>
+      </div>
+
+      <!-- Cuotas descontadas del salario -->
+      <div class="cuota-summary" id="cuota-summary-2"></div>
 
       <!-- Saldo corriente -->
       <div class="saldo-bar" id="saldo-bar-2">
@@ -438,13 +680,33 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         <div class="sc"><div class="lbl">Mis gastos ind.</div><div class="amt c2" id="pi-ind2">¢0</div><div class="sub" id="pi-sub2">—</div></div>
         <div class="sc"><div class="lbl">Mi parte compartida</div><div class="amt cs" id="pi-sh2">¢0</div><div class="sub">50% de compartidos</div></div>
         <div class="sc"><div class="lbl">Ahorro</div><div class="amt csav" id="pi-sav2">¢0</div></div>
-        <div class="sc"><div class="lbl">Deudas</div><div class="amt cdebt" id="pi-debt2">¢0</div></div>
+        <div class="sc"><div class="lbl">Deudas con tarjeta</div><div class="amt cdebt" id="pi-debt2">¢0</div><div class="sub">gastos con tarjeta</div></div>
         <div class="sc"><div class="lbl">Saldo final</div><div class="amt ctot" id="pi-bal2">¢0</div></div>
       </div>
 
       <!-- Desglose -->
       <p class="sec">/ Desglose por Categoría</p>
       <div class="breakdown-grid" id="priv-breakdown-2"></div>
+
+      <!-- Módulo Ahorro -->
+      <div class="module-section">
+        <div class="mod-header">
+          <span class="mod-header-title">🏦 Mis Objetivos de Ahorro</span>
+          <button class="btn-add-item" onclick="showSavingForm(2)">+ Agregar objetivo</button>
+        </div>
+        <div id="saving-add-form-2"></div>
+        <div class="item-list" id="saving-list-2"></div>
+      </div>
+
+      <!-- Módulo Deudas -->
+      <div class="module-section">
+        <div class="mod-header">
+          <span class="mod-header-title">💳 Mis Deudas</span>
+          <button class="btn-add-item" onclick="showDebtForm(2)">+ Agregar deuda</button>
+        </div>
+        <div id="debt-add-form-2"></div>
+        <div class="item-list" id="debt-list-2"></div>
+      </div>
 
       <!-- Formulario -->
       <p class="sec">/ Registrar Gasto</p>
@@ -470,6 +732,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 const SUPABASE_URL      = "https://jztvonoiitoyjgecunxj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6dHZvbm9paXRveWpnZWN1bnhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTg2MDQsImV4cCI6MjA5NTY3NDYwNH0.eP1s7qqZEIGI7MWbJZ3sFiPdszLLMQzv8-ES5OD2F2A";
 const TABLE = "gastos";
+const BUDGET_TABLE = "presupuestos";
 
 // Contraseñas — se persisten en localStorage para permitir cambio
 let PASSWORDS = JSON.parse(localStorage.getItem("sc_passwords") || '{"1":"clave1","2":"clave2"}');
@@ -500,11 +763,40 @@ const CATEGORIES = [
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let expenses = [];    // espejo de la tabla Supabase en memoria
+let expenses = [];   // espejo de la tabla gastos
 
-// Presupuesto por persona: { income, saving, debt }
-// Se persiste en localStorage (no es información sensible de montos de transacciones)
-let budgets = JSON.parse(localStorage.getItem("sc_budgets") || '{"1":{"income":0,"saving":0,"debt":0},"2":{"income":0,"saving":0,"debt":0}}');
+// Presupuesto indexado por clave "person-month-q" donde q=1 o 2.
+// Cada quincena es INDEPENDIENTE por usuario y por mes.
+// q=0 (mes completo) NO se guarda: se calcula sumando q1+q2 al vuelo.
+// Ejemplo: budgets["1-2025-06-1"] = { income:740000, saving:50000, debt:120000 }
+let budgets = {};
+
+// ── Helpers de presupuesto ─────────────────────────────────────
+/** Clave única de un período */
+const bKey = (person, month, q) => `${person}-${month}-${q}`;
+
+/** Registro de una quincena (null si no existe aún) */
+const getBudget = (person, month, q) => budgets[bKey(person, month, q)] || null;
+
+/**
+ * Presupuesto efectivo del período visible.
+ * q=1 o q=2 → devuelve el registro de esa quincena (o ceros si no existe).
+ * q=0 (mes completo) → SUMA los registros de Q1 y Q2 del mismo mes.
+ * Cada quincena es independiente: si solo existe Q1, Q2 aporta ceros.
+ */
+function getBudgetForPeriod(person, month, q) {
+  if (q !== 0) {
+    const b = getBudget(person, month, q);
+    return b || { income: 0, saving: 0, debt: 0 };
+  }
+  const q1 = getBudget(person, month, 1) || { income: 0, saving: 0, debt: 0 };
+  const q2 = getBudget(person, month, 2) || { income: 0, saving: 0, debt: 0 };
+  return {
+    income: q1.income + q2.income,
+    saving: q1.saving + q2.saving,
+    debt:   q1.debt   + q2.debt,
+  };
+}
 
 let pubQ            = 1;
 const privQ         = { 1: 1, 2: 1 };
@@ -546,6 +838,22 @@ function setPubQ(q) {
 function setPrivQ(person, q) {
   privQ[person] = q;
   [0,1,2].forEach(n => document.getElementById(`p${person}-q${n}`).classList.toggle("active", n===q));
+  // Reconstruir budget row para mostrar los campos del período correcto
+  const brEl = document.getElementById("budget-row-" + person);
+  if (brEl) brEl.innerHTML = buildBudgetRow(person);
+  renderPrivate(person);
+}
+
+/**
+ * Se llama al cambiar el selector de mes.
+ * Reinicia la quincena a 1ª (campos del nuevo mes aparecen vacíos)
+ * ya que cada mes es independiente: no hay registros previos para ese mes.
+ */
+function onMonthChange(person) {
+  privQ[person] = 1;
+  [0,1,2].forEach(n => document.getElementById(`p${person}-q${n}`).classList.toggle("active", n===1));
+  const brEl = document.getElementById("budget-row-" + person);
+  if (brEl) brEl.innerHTML = buildBudgetRow(person);
   renderPrivate(person);
 }
 
@@ -566,9 +874,10 @@ function mapRow(r) {
     desc:   r.desc,
     amount: parseFloat(r.amount),
     catId:  r.cat_id,
-    type:   r.type,    // 'shared' | 'p1' | 'p2'
-    person: r.person,  // 1 | 2
+    type:   r.type,              // 'shared' | 'p1' | 'p2'
+    person: r.person,            // 1 | 2
     date:   r.date,
+    onCard: r.on_card === true,  // true = pagado con tarjeta → suma a deuda
   };
 }
 
@@ -611,7 +920,32 @@ function subscribeRealtime() {
     .subscribe(s => setDot(s === "SUBSCRIBED" ? "live" : "connecting"));
 }
 
+
+function subscribeBudgetRealtime() {
+  db.channel("presupuestos-rt")
+    .on("postgres_changes",
+      { event: "*", schema: "public", table: BUDGET_TABLE },
+      (payload) => {
+        const row = payload.new || payload.old;
+        if (row && row.person && row.month && row.quincena) {
+          const key = bKey(row.person, row.month, row.quincena);
+          if (payload.eventType === "DELETE") {
+            delete budgets[key];
+          } else {
+            budgets[key] = {
+              income: Number(row.income || 0),
+              saving: Number(row.saving || 0),
+              debt:   Number(row.debt   || 0),
+            };
+          }
+          renderAll();
+        }
+      })
+    .subscribe();
+}
+
 function setDot(s) {
+
   const d = document.getElementById("db-dot");
   d.classList.toggle("live", s === "live");
   d.title = s === "live" ? "Conectado · Sincronización activa" : s === "connecting" ? "Conectando…" : "Error";
@@ -672,32 +1006,532 @@ function changePassword(person) {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   3.8b  TABLAS SUPABASE — AHORROS Y DEUDAS
+   ─────────────────────────────────────────────────────────────
+   Tabla "ahorros":   id, person, desc, goal, aporte, created_at
+   Tabla "deudas_sc": id, person, desc, total, cuota,  paid_so_far, created_at
+   (usamos "deudas_sc" para no colisionar con palabras reservadas)
+   Ambas tablas usan la anon key con RLS "acceso publico".
+───────────────────────────────────────────────────────────── */
+const SAVINGS_TABLE = "ahorros";
+const DEBTS_TABLE   = "deudas_sc";
+
+// Arrays en memoria
+let savings = [];   // { id, person, desc, goal, aporte }
+let debts   = [];   // { id, person, desc, total, cuota, paid_so_far }
+
+// ── Carga inicial ──────────────────────────────────────────────
+async function loadSavings() {
+  const { data, error } = await db.from(SAVINGS_TABLE).select("*").order("created_at");
+  if (error) return console.error("loadSavings:", error.message);
+  savings = (data || []).map(r => ({
+    id:     r.id,
+    person: r.person,
+    desc:   r.nombre,
+    goal:   Number(r.goal  || 0),
+    aporte: Number(r.aporte || 0),
+  }));
+}
+
+async function loadDebts() {
+  const { data, error } = await db.from(DEBTS_TABLE).select("*").order("created_at");
+  if (error) return console.error("loadDebts:", error.message);
+  debts = (data || []).map(r => ({
+    id:         r.id,
+    person:     r.person,
+    desc:       r.nombre,
+    total:      Number(r.total        || 0),
+    cuota:      Number(r.cuota        || 0),
+    paid_so_far:Number(r.paid_so_far  || 0),
+    moneda:     r.moneda              || "CRC",   // 'CRC' | 'USD'
+    tipo_cambio:Number(r.tipo_cambio  || 1),      // tasa CRC/USD al momento del registro
+  }));
+}
+
+// ── Realtime suscripción ───────────────────────────────────────
+function subscribeSavingsRealtime() {
+  db.channel("ahorros-rt")
+    .on("postgres_changes", { event: "*", schema: "public", table: SAVINGS_TABLE }, payload => {
+      if (payload.eventType === "INSERT") {
+        const r = payload.new;
+        if (!savings.find(s => s.id === r.id))
+          savings.push({ id:r.id, person:r.person, desc:r.nombre, goal:Number(r.goal||0), aporte:Number(r.aporte||0) });
+      } else if (payload.eventType === "UPDATE") {
+        const i = savings.findIndex(s => s.id === payload.new.id);
+        const r = payload.new;
+        if (i !== -1) savings[i] = { id:r.id, person:r.person, desc:r.nombre, goal:Number(r.goal||0), aporte:Number(r.aporte||0) };
+      } else if (payload.eventType === "DELETE") {
+        savings = savings.filter(s => s.id !== payload.old.id);
+      }
+      renderAll();
+    }).subscribe();
+}
+
+function subscribeDebtsRealtime() {
+  db.channel("deudas-rt")
+    .on("postgres_changes", { event: "*", schema: "public", table: DEBTS_TABLE }, payload => {
+      if (payload.eventType === "INSERT") {
+        const r = payload.new;
+        if (!debts.find(d => d.id === r.id))
+          debts.push({ id:r.id, person:r.person, desc:r.nombre, total:Number(r.total||0), cuota:Number(r.cuota||0), paid_so_far:Number(r.paid_so_far||0), moneda:r.moneda||'CRC', tipo_cambio:Number(r.tipo_cambio||1) });
+      } else if (payload.eventType === "UPDATE") {
+        const i = debts.findIndex(d => d.id === payload.new.id);
+        const r = payload.new;
+        if (i !== -1) debts[i] = { id:r.id, person:r.person, desc:r.nombre, total:Number(r.total||0), cuota:Number(r.cuota||0), paid_so_far:Number(r.paid_so_far||0), moneda:r.moneda||'CRC', tipo_cambio:Number(r.tipo_cambio||1) };
+      } else if (payload.eventType === "DELETE") {
+        debts = debts.filter(d => d.id !== payload.old.id);
+      }
+      renderAll();
+    }).subscribe();
+}
+
+// ── CRUD Ahorros ───────────────────────────────────────────────
+function showSavingForm(person) {
+  const el = document.getElementById(`saving-add-form-${person}`);
+  if (!el) return;
+  if (el.innerHTML) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+    <div class="item-add-form">
+      <div class="item-add-grid">
+        <div class="fg span2">
+          <label>Descripción del objetivo</label>
+          <input type="text" id="sav-desc-${person}" placeholder="Ej: Fondo de emergencia…"/>
+        </div>
+        <div class="fg">
+          <label>🎯 Objetivo total ¢</label>
+          <input type="number" id="sav-goal-${person}" placeholder="0" min="1" step="1000"/>
+        </div>
+        <div class="fg">
+          <label>💰 Aporte esta quincena ¢</label>
+          <input type="number" id="sav-aporte-${person}" placeholder="0" min="0" step="1000"/>
+        </div>
+      </div>
+      <button class="btn-add" onclick="addSaving(${person})">+ Guardar objetivo</button>
+      <button class="btn-add" style="background:var(--card2);margin-left:8px" onclick="document.getElementById('saving-add-form-${person}').innerHTML=''">Cancelar</button>
+    </div>
+  `;
+}
+
+async function addSaving(person) {
+  const desc  = document.getElementById(`sav-desc-${person}`).value.trim();
+  const goal  = parseFloat(document.getElementById(`sav-goal-${person}`).value) || 0;
+  const aporte= parseFloat(document.getElementById(`sav-aporte-${person}`).value) || 0;
+  if (!desc || goal <= 0) { showToast("Ingresa descripción y objetivo", "err"); return; }
+  const { error } = await db.from(SAVINGS_TABLE).insert({ person, nombre: desc, goal, aporte });
+  if (error) { showToast("Error: " + (error.message||""), "err"); return; }
+  showToast("✓ Objetivo de ahorro guardado", "ok");
+  document.getElementById(`saving-add-form-${person}`).innerHTML = "";
+}
+
+async function addAporte(savId, person) {
+  const amount = parseFloat(document.getElementById(`aporte-inp-${savId}`).value) || 0;
+  if (amount <= 0) return;
+  const sav = savings.find(s => s.id === savId);
+  if (!sav) return;
+  const newAporte = sav.aporte + amount;
+  const { error } = await db.from(SAVINGS_TABLE).update({ aporte: newAporte }).eq("id", savId);
+  if (error) { showToast("Error: " + (error.message||""), "err"); return; }
+  showToast("✓ Aporte registrado", "ok");
+  document.getElementById(`aporte-inp-${savId}`).value = "";
+}
+
+async function deleteSaving(id) {
+  if (!confirm("¿Eliminar este objetivo de ahorro?")) return;
+  const { error } = await db.from(SAVINGS_TABLE).delete().eq("id", id);
+  if (error) showToast("Error al eliminar", "err");
+  else showToast("✓ Objetivo eliminado", "ok");
+}
+
+// ── CRUD Deudas ────────────────────────────────────────────────
+function showDebtForm(person) {
+  const el = document.getElementById(`debt-add-form-${person}`);
+  if (!el) return;
+  if (el.innerHTML) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+    <div class="item-add-form">
+      <div class="item-add-grid">
+        <div class="fg span2">
+          <label>Descripción de la deuda</label>
+          <input type="text" id="debt-desc-${person}" placeholder="Ej: Tarjeta Visa…"/>
+        </div>
+        <div class="fg">
+          <label>💱 Moneda</label>
+          <select id="debt-moneda-${person}" onchange="toggleTipoCambio(${person})">
+            <option value="CRC">¢ Colones (CRC)</option>
+            <option value="USD">$ Dólares (USD)</option>
+          </select>
+        </div>
+        <div class="fg" id="tc-wrap-${person}" style="display:none">
+          <label>🔄 Tipo de cambio (¢ por $1)</label>
+          <input type="number" id="debt-tc-${person}" placeholder="Ej: 520" min="1" step="1"/>
+        </div>
+        <div class="fg">
+          <label id="debt-total-lbl-${person}">💳 Total de la deuda ¢</label>
+          <input type="number" id="debt-total-${person}" placeholder="0" min="1" step="1000"/>
+        </div>
+        <div class="fg">
+          <label id="debt-cuota-lbl-${person}">📅 Cuota quincenal ¢</label>
+          <input type="number" id="debt-cuota-${person}" placeholder="0" min="0" step="1000"/>
+        </div>
+      </div>
+      <button class="btn-add" style="background:var(--debt)" onclick="addDebt(${person})">+ Guardar deuda</button>
+      <button class="btn-add" style="background:var(--card2);margin-left:8px" onclick="document.getElementById('debt-add-form-${person}').innerHTML=''">Cancelar</button>
+    </div>
+  `;
+}
+
+/** Mostrar/ocultar campo tipo de cambio y actualizar labels */
+function toggleTipoCambio(person) {
+  const moneda   = document.getElementById(`debt-moneda-${person}`).value;
+  const tcWrap   = document.getElementById(`tc-wrap-${person}`);
+  const lblTotal = document.getElementById(`debt-total-lbl-${person}`);
+  const lblCuota = document.getElementById(`debt-cuota-lbl-${person}`);
+  const isUSD    = moneda === "USD";
+  tcWrap.style.display  = isUSD ? "flex" : "none";
+  lblTotal.textContent  = isUSD ? "💳 Total de la deuda $" : "💳 Total de la deuda ¢";
+  lblCuota.textContent  = isUSD ? "📅 Cuota quincenal $"   : "📅 Cuota quincenal ¢";
+}
+
+async function addDebt(person) {
+  const desc       = document.getElementById(`debt-desc-${person}`).value.trim();
+  const moneda     = document.getElementById(`debt-moneda-${person}`)?.value || "CRC";
+  const tipo_cambio= parseFloat(document.getElementById(`debt-tc-${person}`)?.value) || 1;
+  const total      = parseFloat(document.getElementById(`debt-total-${person}`).value) || 0;
+  const cuota      = parseFloat(document.getElementById(`debt-cuota-${person}`).value) || 0;
+
+  if (!desc)      { showToast("Ingresa una descripción", "err"); return; }
+  if (total <= 0) { showToast("Ingresa el total de la deuda", "err"); return; }
+  if (moneda === "USD" && tipo_cambio <= 0) {
+    showToast("Ingresa el tipo de cambio", "err"); return;
+  }
+
+  const { error } = await db.from(DEBTS_TABLE).insert({
+    person, nombre: desc, total, cuota, paid_so_far: 0,
+    moneda,
+    tipo_cambio: moneda === "USD" ? tipo_cambio : 1,
+  });
+  if (error) { showToast("Error: " + (error.message||""), "err"); return; }
+  showToast("\u2713 Deuda guardada", "ok");
+  document.getElementById(`debt-add-form-${person}`).innerHTML = "";
+}
+
+async function pagarCuota(debtId) {
+  const debt = debts.find(d => d.id === debtId);
+  if (!debt) return;
+  const newPaid = Math.min(debt.paid_so_far + debt.cuota, debt.total);
+  const { error } = await db.from(DEBTS_TABLE).update({ paid_so_far: newPaid }).eq("id", debtId);
+  if (error) { showToast("Error: " + (error.message||""), "err"); return; }
+  showToast("✓ Cuota registrada", "ok");
+}
+
+async function deleteDebt(id) {
+  if (!confirm("¿Eliminar esta deuda?")) return;
+  const { error } = await db.from(DEBTS_TABLE).delete().eq("id", id);
+  if (error) showToast("Error al eliminar", "err");
+  else showToast("✓ Deuda eliminada", "ok");
+}
+
+// ── Renderizado de módulos ─────────────────────────────────────
+function renderSavings(person) {
+  const list = document.getElementById(`saving-list-${person}`);
+  if (!list) return;
+  const mySavings = savings.filter(s => s.person === person);
+  if (mySavings.length === 0) {
+    list.innerHTML = `<p class="empty">Sin objetivos de ahorro. Agrega uno con el botón de arriba.</p>`;
+    return;
+  }
+  list.innerHTML = "";
+  mySavings.forEach(s => {
+    const pending = Math.max(0, s.goal - s.aporte);
+    const pct     = s.goal > 0 ? Math.min(100, (s.aporte / s.goal) * 100) : 0;
+    const done    = pending === 0;
+    const fill    = done ? "var(--saving)" : pct > 60 ? "var(--sh)" : pct > 30 ? "var(--warn)" : "var(--a1)";
+    const card = document.createElement("div");
+    card.className = "item-card saving-card";
+    card.innerHTML = `
+      <div class="item-card-header">
+        <span class="item-card-title">🏦 ${s.desc}</span>
+        <button class="item-card-del" onclick="deleteSaving(${s.id})" title="Eliminar">✕</button>
+      </div>
+      <div class="item-amounts">
+        <div class="item-amt-block">
+          <span class="item-amt-lbl">Objetivo</span>
+          <span class="item-amt-val goal">${fmt(s.goal)}</span>
+        </div>
+        <div class="item-amt-block">
+          <span class="item-amt-lbl">Aportado</span>
+          <span class="item-amt-val done">${fmt(s.aporte)}</span>
+        </div>
+        <div class="item-amt-block">
+          <span class="item-amt-lbl">Pendiente</span>
+          <span class="item-amt-val pend">${done ? "✅ Completado" : fmt(pending)}</span>
+        </div>
+      </div>
+      <div class="item-progress">
+        <div class="item-progress-fill" style="width:${pct}%;background:${fill}"></div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="number" id="aporte-inp-${s.id}" class="fg" style="flex:1;min-width:120px;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-family:inherit;font-size:0.78rem" placeholder="Nuevo aporte ¢" min="0" step="1000"/>
+        <button class="btn-add" style="padding:6px 14px;font-size:0.68rem" onclick="addAporte(${s.id}, ${person})">+ Aporte</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function renderDebts(person) {
+  const list = document.getElementById(`debt-list-${person}`);
+  if (!list) return;
+  const myDebts = debts.filter(d => d.person === person);
+  if (myDebts.length === 0) {
+    list.innerHTML = `<p class="empty">Sin deudas registradas. Agrega una con el botón de arriba.</p>`;
+    return;
+  }
+  list.innerHTML = "";
+  myDebts.forEach(d => {
+    const isUSD    = d.moneda === "USD";
+    const tc       = d.tipo_cambio || 1;
+    // Todos los cálculos de progreso en la moneda original
+    const pending  = Math.max(0, d.total - d.paid_so_far);
+    const pct      = d.total > 0 ? Math.min(100, (d.paid_so_far / d.total) * 100) : 0;
+    const done     = pending === 0;
+    const fill     = done ? "var(--saving)" : pct > 60 ? "var(--sh)" : pct > 30 ? "var(--warn)" : "var(--debt)";
+
+    // Formato principal según moneda
+    const fmtAmt   = n => isUSD ? fmtUSD(n) : fmt(n);
+    const fmtSec   = n => isUSD ? `≈ ${fmt(n * tc)}` : "";
+    const badge    = isUSD
+      ? `<span class="currency-badge usd">USD</span>`
+      : `<span class="currency-badge crc">CRC</span>`;
+    const cuotaCRC = isUSD ? d.cuota * tc : d.cuota;
+    const tcNote   = isUSD
+      ? `<div class="tc-note">Tipo de cambio: ¢${tc.toLocaleString()} por $1 · Cuota en ¢: ${fmt(cuotaCRC)}</div>`
+      : "";
+
+    const card = document.createElement("div");
+    card.className = `item-card debt-card${isUSD ? " debt-usd" : ""}`;
+    card.innerHTML = `
+      <div class="item-card-header">
+        <span class="item-card-title">💳 ${d.desc} ${badge}</span>
+        <button class="item-card-del" onclick="deleteDebt(${d.id})" title="Eliminar">✕</button>
+      </div>
+      <div class="item-amounts">
+        <div class="item-amt-block">
+          <span class="item-amt-lbl">Total deuda</span>
+          <span class="item-amt-val dtot">${fmtAmt(d.total)}</span>
+          ${isUSD ? `<span style="font-size:0.6rem;color:var(--muted)">${fmtSec(d.total)}</span>` : ""}
+        </div>
+        <div class="item-amt-block">
+          <span class="item-amt-lbl">Cuota qnal.</span>
+          <span class="item-amt-val dqta">${fmtAmt(d.cuota)}</span>
+          ${isUSD ? `<span style="font-size:0.6rem;color:var(--muted)">${fmtSec(d.cuota)}</span>` : ""}
+        </div>
+        <div class="item-amt-block">
+          <span class="item-amt-lbl">Pendiente</span>
+          <span class="item-amt-val dpend ${done ? "ok" : ""}">${done ? "✅ Saldada" : fmtAmt(pending)}</span>
+          ${isUSD && !done ? `<span style="font-size:0.6rem;color:var(--muted)">${fmtSec(pending)}</span>` : ""}
+        </div>
+      </div>
+      <div class="item-progress">
+        <div class="item-progress-fill" style="width:${pct}%;background:${fill}"></div>
+      </div>
+      ${tcNote}
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:0.72rem;color:var(--muted);flex:1">
+          Pagado: ${fmtAmt(d.paid_so_far)} de ${fmtAmt(d.total)} (${pct.toFixed(0)}%)
+        </span>
+        ${!done ? `<button class="btn-add" style="padding:6px 14px;font-size:0.68rem;background:var(--debt)" onclick="pagarCuota(${d.id})">✓ Pagar cuota</button>` : ""}
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+// ── Gráfico circular (canvas puro, sin librerías) ──────────────
+const PIE_COLORS = {
+  saving:  "#34d399",
+  debt:    "#fb923c",
+  expense: "#5b8aff",
+  saldo:   "#a78bfa",
+};
+
+function drawPieChart(canvasId, segments) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx  = canvas.getContext("2d");
+  const dpr  = window.devicePixelRatio || 1;
+  const size = 160;
+  canvas.width  = size * dpr;
+  canvas.height = size * dpr;
+  ctx.scale(dpr, dpr);
+  const cx = size / 2, cy = size / 2, r = size / 2 - 10;
+  const total = segments.reduce((s, sg) => s + sg.value, 0);
+  if (total <= 0) {
+    ctx.clearRect(0, 0, size, size);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(44,49,84,0.8)";
+    ctx.lineWidth = 18;
+    ctx.stroke();
+    return;
+  }
+  let angle = -Math.PI / 2;
+  segments.forEach(sg => {
+    if (sg.value <= 0) return;
+    const slice = (sg.value / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, angle, angle + slice);
+    ctx.closePath();
+    ctx.fillStyle = sg.color;
+    ctx.fill();
+    angle += slice;
+  });
+  // Hueco interior
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 20, 0, Math.PI * 2);
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--card").trim() || "#1e2236";
+  ctx.fill();
+}
+
+function renderChart(person, income, totalSaving, totalDebt, totalExpense) {
+  const saldo = Math.max(0, income - totalSaving - totalDebt - totalExpense);
+  const segments = [
+    { label: "Ahorro",    value: totalSaving,  color: PIE_COLORS.saving  },
+    { label: "Deudas",    value: totalDebt,    color: PIE_COLORS.debt    },
+    { label: "Gastos",    value: totalExpense, color: PIE_COLORS.expense },
+    { label: "Disponible",value: saldo,        color: PIE_COLORS.saldo   },
+  ];
+  drawPieChart(`chart-${person}`, segments);
+  // Centro
+  const centerVal = document.getElementById(`chart-center-val-${person}`);
+  if (centerVal) centerVal.textContent = fmt(saldo);
+  // Leyenda
+  const legend = document.getElementById(`chart-legend-${person}`);
+  if (!legend) return;
+  legend.innerHTML = segments.map(sg => `
+    <div class="chart-legend-item">
+      <div class="chart-legend-dot" style="background:${sg.color}"></div>
+      <span class="chart-legend-lbl">${sg.label}</span>
+      <span class="chart-legend-val">${fmt(sg.value)}</span>
+    </div>
+  `).join("");
+}
+
+/* ─────────────────────────────────────────────────────────────
    3.9  PRESUPUESTO (ingresos, ahorro, deudas)
 ───────────────────────────────────────────────────────────── */
-function saveBudget(person) {
+
+async function loadBudgets() {
+  const { data, error } = await db.from(BUDGET_TABLE).select("*");
+  if (error) return console.error("loadBudgets:", error.message || error);
+  (data || []).forEach(r => {
+    // Requiere columnas: person, month (TEXT 'YYYY-MM'), quincena (INTEGER 1|2)
+    if (!r.month || !r.quincena) return;
+    const key = bKey(r.person, r.month, r.quincena);
+    budgets[key] = {
+      income: Number(r.income || 0),
+      saving: Number(r.saving || 0),
+      debt:   Number(r.debt   || 0),
+    };
+  });
+}
+
+async function saveBudgetToSupabase(person, month, quincena, income, saving, debt) {
+  const { error } = await db.from(BUDGET_TABLE).upsert(
+    { person, month, quincena, income, saving, debt, updated_at: new Date().toISOString() },
+    { onConflict: "person,month,quincena" }
+  );
+  if (error) {
+    const msg = (error && typeof error.message === "string") ? error.message : "error desconocido";
+    showToast("Error guardando presupuesto: " + msg, "err");
+    return false;
+  }
+  budgets[bKey(person, month, quincena)] = { income, saving, debt };
+  return true;
+}
+
+async function saveBudget(person) {
+  const mEl     = document.getElementById("p" + person + "-month");
+  const month   = mEl ? mEl.value : currentMonth();
+  const q       = privQ[person];
+
+  // Mes completo es solo lectura (suma Q1+Q2), no se puede guardar
+  if (q === 0) {
+    showToast("Selecciona 1ª o 2ª quincena para guardar", "err");
+    return;
+  }
+
   const income = parseFloat(document.getElementById(`b-inc-${person}`).value) || 0;
   const saving = parseFloat(document.getElementById(`b-sav-${person}`).value) || 0;
   const debt   = parseFloat(document.getElementById(`b-debt-${person}`).value) || 0;
-  budgets[person] = { income, saving, debt };
-  localStorage.setItem("sc_budgets", JSON.stringify(budgets));
-  showToast("✓ Presupuesto guardado", "ok");
-  renderPrivate(person);
+
+  const ok = await saveBudgetToSupabase(person, month, q, income, saving, debt);
+  if (ok) {
+    showToast("✓ Presupuesto guardado", "ok");
+    renderAll();
+  }
 }
 
 function buildBudgetRow(person) {
-  const b = budgets[person] || { income:0, saving:0, debt:0 };
+  const mEl   = document.getElementById("p" + person + "-month");
+  const month = mEl ? mEl.value : currentMonth();
+  const q     = privQ[person];
+
+  // ── Mes completo: mostrar suma Q1+Q2 en modo solo lectura ──────
+  if (q === 0) {
+    const b = getBudgetForPeriod(person, month, 0);
+    return `
+      <div class="fg-budget">
+        <label>💼 Salario total (Q1+Q2)</label>
+        <div class="prefix"><span>¢</span><input type="number" disabled value="${b.income}" style="opacity:0.55;cursor:not-allowed"/></div>
+      </div>
+      <div class="fg-budget">
+        <label>🏦 Ahorro total (Q1+Q2)</label>
+        <div class="prefix"><span>¢</span><input type="number" disabled value="${b.saving}" style="opacity:0.55;cursor:not-allowed"/></div>
+      </div>
+      <div class="fg-budget">
+        <label>💳 Deudas totales (Q1+Q2)</label>
+        <div class="prefix"><span>¢</span><input type="number" disabled value="${b.debt}" style="opacity:0.55;cursor:not-allowed"/></div>
+      </div>
+      <div class="fg-budget" style="align-self:flex-end;font-size:0.61rem;color:var(--muted);line-height:1.6;padding-bottom:4px">
+        Suma de 1ª + 2ª quincena.<br>Selecciona una quincena para editar.
+      </div>
+    `;
+  }
+
+  // ── Quincena 1 o 2: editable, vacío si no hay registro previo ──
+  const existing = getBudget(person, month, q);
+  const incVal   = existing !== null ? existing.income : "";
+  const savVal   = existing !== null ? existing.saving : "";
+  const debtVal  = existing !== null ? existing.debt   : "";
+  const qLabel   = q === 1 ? "1ª quincena (1–15)" : "2ª quincena (16–31)";
+
   return `
     <div class="fg-budget">
-      <label>💼 Ingreso (salario)</label>
-      <div class="prefix"><span>¢</span><input type="number" id="b-inc-${person}" value="${b.income}" min="0" step="1000" placeholder="0"/></div>
+      <label>💼 Salario · ${qLabel}</label>
+      <div class="prefix"><span>¢</span>
+        <input type="number" id="b-inc-${person}" value="${incVal}"
+               min="0" step="1000" placeholder="Salario de esta quincena…"/>
+      </div>
     </div>
     <div class="fg-budget">
-      <label>🏦 Ahorro</label>
-      <div class="prefix"><span>¢</span><input type="number" id="b-sav-${person}" value="${b.saving}" min="0" step="1000" placeholder="0"/></div>
+      <label>🏦 Ahorro · ${qLabel}
+        <span style="font-size:0.54rem;color:var(--saving);font-weight:normal"> — descuenta del salario</span>
+      </label>
+      <div class="prefix"><span>¢</span>
+        <input type="number" id="b-sav-${person}" value="${savVal}"
+               min="0" step="1000" placeholder="Ahorro de esta quincena…"/>
+      </div>
     </div>
     <div class="fg-budget">
-      <label>💳 Deudas (tarjetas u otras)</label>
-      <div class="prefix"><span>¢</span><input type="number" id="b-debt-${person}" value="${b.debt}" min="0" step="1000" placeholder="0"/></div>
+      <label>💳 Deudas · ${qLabel}
+        <span style="font-size:0.54rem;color:var(--debt);font-weight:normal"> — informativo, no afecta saldo</span>
+      </label>
+      <div class="prefix"><span>¢</span>
+        <input type="number" id="b-debt-${person}" value="${debtVal}"
+               min="0" step="1000" placeholder="Deudas de esta quincena…"/>
+      </div>
     </div>
     <button class="btn-save-budget" onclick="saveBudget(${person})">Guardar</button>
   `;
@@ -712,6 +1546,8 @@ async function addExpense(person) {
   const date   = document.getElementById(`inp-date-p${person}`).value || today();
   const catId  = document.getElementById(`inp-cat-p${person}`).value;
   const type   = document.getElementById(`inp-type-p${person}`).value;
+  // Leer estado del switch de tarjeta
+  const onCard = document.getElementById(`sw-card-p${person}`)?.checked === true;
 
   if (!desc)                    { document.getElementById(`inp-desc-p${person}`).focus(); return; }
   if (isNaN(amount)||amount<=0) { document.getElementById(`inp-amt-p${person}`).focus();  return; }
@@ -722,20 +1558,22 @@ async function addExpense(person) {
   try {
     const { error } = await db.from(TABLE).insert({
       desc, amount, cat_id: catId,
-      type: type === "shared" ? "shared" : "p"+person,
-      person, date,
+      type:    type === "shared" ? "shared" : "p"+person,
+      person,  date,
+      on_card: onCard,   // true → suma a deuda; false → solo a categoría
     });
 
     if (error) {
-      // Extraer solo el string del mensaje para evitar DataCloneError
       const msg = (error && typeof error.message === "string")
-        ? error.message
-        : "Error desconocido al guardar";
+        ? error.message : "Error desconocido al guardar";
       showToast("Error: " + msg, "err");
     } else {
       showToast("✓ Gasto guardado", "ok");
       document.getElementById(`inp-desc-p${person}`).value = "";
       document.getElementById(`inp-amt-p${person}`).value  = "";
+      // Resetear switch a efectivo tras guardar
+      const sw = document.getElementById(`sw-card-p${person}`);
+      if (sw) { sw.checked = false; updateSwitchUI(person); }
     }
   } catch (e) {
     const msg = (e && typeof e.message === "string") ? e.message : String(e);
@@ -743,6 +1581,21 @@ async function addExpense(person) {
   }
 
   if (btn) { btn.disabled = false; btn.textContent = "+ Agregar gasto"; }
+}
+
+// Actualiza la apariencia del switch al cambiar
+function updateSwitchUI(person) {
+  const sw  = document.getElementById(`sw-card-p${person}`);
+  const row = document.getElementById(`sw-row-p${person}`);
+  const lbl = document.getElementById(`sw-lbl-p${person}`);
+  if (!sw || !row || !lbl) return;
+  if (sw.checked) {
+    row.classList.add("active-card");
+    lbl.textContent = "💳 Con tarjeta — suma a deudas";
+  } else {
+    row.classList.remove("active-card");
+    lbl.textContent = "💵 Sin tarjeta — solo categoría";
+  }
 }
 
 async function deleteExpense(id) {
@@ -775,14 +1628,77 @@ function calcTotals(arr) {
 }
 
 /**
- * Calcula el saldo corriente de una persona.
- * saldo = ingresos - (gastos_ind + mitad_compartidos + ahorro + deudas)
+ * Calcula las deudas con tarjeta de una persona en el período.
+ * Reglas:
+ *  - Gasto individual con tarjeta → deuda completa del usuario
+ *  - Gasto compartido con tarjeta → mitad de la deuda para cada usuario
+ *  - Es independiente del saldo: no lo reduce
+ *  - Cada usuario tiene sus propias deudas (Regla 5)
+ *  - Si deuda > salario del período → se muestra en rojo
  */
-function calcSaldo(person, arr) {
-  const b      = budgets[person] || { income:0, saving:0, debt:0 };
-  const myInd  = arr.filter(e => e.type === "p"+person).reduce((s,e) => s+e.amount, 0);
-  const mySh   = arr.filter(e => e.type === "shared").reduce((s,e)  => s+e.amount, 0) / 2;
-  return b.income - myInd - mySh - b.saving - b.debt;
+function calcDebt(person, arr) {
+  const indCard = arr
+    .filter(e => e.type === "p" + person && e.onCard)
+    .reduce((s, e) => s + e.amount, 0);
+  const shCard = arr
+    .filter(e => e.type === "shared" && e.onCard)
+    .reduce((s, e) => s + e.amount, 0) / 2;
+  return indCard + shCard;
+}
+
+/**
+ * Suma de cuotas de ahorro de una persona.
+ */
+function calcCuotaAhorro(person) {
+  return savings.filter(s => s.person === person).reduce((sum, s) => sum + s.aporte, 0);
+}
+
+/**
+ * Suma de cuotas de deuda de una persona.
+ * Las cuotas en USD se convierten a CRC usando el tipo_cambio guardado.
+ */
+function calcCuotaDeuda(person) {
+  return debts
+    .filter(d => d.person === person)
+    .reduce((sum, d) => {
+      const cuotaCRC = d.moneda === "USD" ? d.cuota * d.tipo_cambio : d.cuota;
+      return sum + cuotaCRC;
+    }, 0);
+}
+
+/** Formatea un monto en dólares: $1,234.56 */
+function fmtUSD(n) {
+  const abs = Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return (n < 0 ? "-" : "") + "$" + abs;
+}
+
+/** Devuelve el monto en CRC y el equivalente en la moneda original */
+function debtAmountDisplay(amount, moneda, tipo_cambio) {
+  if (moneda === "USD") {
+    const crc = amount * tipo_cambio;
+    return { primary: fmtUSD(amount), secondary: fmt(crc), label: "≈" };
+  }
+  return { primary: fmt(amount), secondary: null, label: "" };
+}
+
+/**
+ * Calcula el saldo disponible del período.
+ *
+ * FÓRMULA: saldo = salario − gastos − cuota_ahorros − cuota_deudas
+ *
+ * REGLAS:
+ *  • Cuotas de ahorro y de deuda se descuentan del salario (Regla 3)
+ *  • Los gastos también reducen el saldo
+ *  • Las deudas totales son informativas (no el monto de la cuota, sino el saldo pendiente)
+ *  • Cada quincena es independiente
+ */
+function calcSaldo(person, arr, month, q) {
+  const b        = getBudgetForPeriod(person, month, q);
+  const myInd    = arr.filter(e => e.type === "p" + person).reduce((s, e) => s + e.amount, 0);
+  const mySh     = arr.filter(e => e.type === "shared").reduce((s, e) => s + e.amount, 0) / 2;
+  const cuotaSav = calcCuotaAhorro(person);
+  const cuotaDebt= calcCuotaDeuda(person);
+  return b.income - myInd - mySh - cuotaSav - cuotaDebt;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -872,16 +1788,28 @@ function renderPrivate(person) {
   const myInd    = filtered.filter(e => e.type === "p"+person).reduce((s,e) => s+e.amount, 0);
   const shTotal  = filtered.filter(e => e.type === "shared").reduce((s,e) => s+e.amount, 0);
   const myShare  = shTotal / 2;
-  const b        = budgets[person] || { income:0, saving:0, debt:0 };
-  const saldo    = b.income - myInd - myShare - b.saving - b.debt;
+  // Presupuesto del período activo (suma Q1+Q2 si es mes completo)
+  const b        = getBudgetForPeriod(person, month, q);
+  // Saldo: income − gastos − ahorro (deudas NO restan)
+  const saldo    = calcSaldo(person, filtered, month, q);
+  // Deudas con tarjeta por usuario, informativas
+  const myDebt   = calcDebt(person, filtered);
+  const debtOver = myDebt > b.income && b.income > 0;
 
   // Tarjetas de resumen
   document.getElementById(`pi-inc${person}`).textContent  = fmt(b.income);
   document.getElementById(`pi-ind${person}`).textContent  = fmt(myInd);
   document.getElementById(`pi-sh${person}`).textContent   = fmt(myShare);
   document.getElementById(`pi-sav${person}`).textContent  = fmt(b.saving);
-  document.getElementById(`pi-debt${person}`).textContent = fmt(b.debt);
   document.getElementById(`pi-sub${person}`).textContent  = label;
+
+  // Tarjeta deuda — rojo si supera el salario
+  const debtEl  = document.getElementById(`pi-debt${person}`);
+  const debtSub = debtEl?.nextElementSibling;
+  debtEl.textContent = fmt(myDebt);
+  debtEl.className   = "amt " + (debtOver ? "cneg" : "cdebt");
+  if (debtSub && debtSub.classList.contains("sub"))
+    debtSub.textContent = debtOver ? "⚠️ supera el salario" : "gastos con tarjeta";
 
   // Saldo final — rojo si negativo
   const balEl = document.getElementById(`pi-bal${person}`);
@@ -897,39 +1825,70 @@ function renderPrivate(person) {
   saldoFill.style.width      = pct + "%";
   saldoFill.style.background = saldo < 0 ? "var(--danger)" : saldo < b.income * 0.2 ? "var(--warn)" : "var(--saving)";
 
-  // Budget row
-  document.getElementById(`budget-row-${person}`).innerHTML = buildBudgetRow(person);
+  // Budget row — reconstruir para reflejar el período correcto
+  const brEl2 = document.getElementById(`budget-row-${person}`);
+  if (brEl2) brEl2.innerHTML = buildBudgetRow(person);
 
   // Desglose privado por categoría
   const mine = filtered.filter(e => e.person === person);
   const bkEl = document.getElementById(`priv-breakdown-${person}`);
   bkEl.innerHTML = "";
   CATEGORIES.forEach(cat => {
-    const total = mine.filter(e => e.catId === cat.id).reduce((s,e) => s+e.amount, 0);
+    const catMine   = mine.filter(e => e.catId === cat.id);
+    const total     = catMine.reduce((s,e) => s+e.amount, 0);
     if (total === 0) return;
-    const isShared = mine.filter(e => e.catId === cat.id && e.type === "shared").length > 0;
-    const card = document.createElement("div");
-    card.className = "bk-card";
-    if (isShared) {
-      const sharedAmt = mine.filter(e => e.catId === cat.id && e.type === "shared").reduce((s,e) => s+e.amount, 0);
-      const indAmt    = mine.filter(e => e.catId === cat.id && e.type !== "shared").reduce((s,e) => s+e.amount, 0);
-      card.innerHTML = `
-        <div class="bk-ico">${cat.icon}</div>
-        <div class="bk-cat">${cat.name}</div>
-        <div class="bk-amt">${fmt(indAmt + sharedAmt/2)}</div>
-        <div class="bk-sh">${sharedAmt > 0 ? `compartido: ${fmt(sharedAmt/2)} (${fmt(sharedAmt)})` : ""}</div>
-      `;
-    } else {
-      card.innerHTML = `
-        <div class="bk-ico">${cat.icon}</div>
-        <div class="bk-cat">${cat.name}</div>
-        <div class="bk-amt">${fmt(total)}</div>
-        <div class="bk-sh">individual</div>
-      `;
-    }
+    const sharedAmt = catMine.filter(e => e.type === "shared").reduce((s,e) => s+e.amount, 0);
+    const indAmt    = catMine.filter(e => e.type !== "shared").reduce((s,e) => s+e.amount, 0);
+    const cardAmt   = catMine.filter(e => e.onCard).reduce((s,e) => s+e.amount, 0);
+    const card      = document.createElement("div");
+    card.className  = "bk-card";
+    const shLine    = sharedAmt > 0
+      ? `<div class="bk-sh">compartido: ${fmt(sharedAmt/2)} (${fmt(sharedAmt)})</div>`
+      : `<div class="bk-sh">individual</div>`;
+    const cardLine  = cardAmt > 0
+      ? `<div class="bk-sh" style="color:var(--debt)">💳 tarjeta: ${fmt(cardAmt)}</div>`
+      : "";
+    card.innerHTML = `
+      <div class="bk-ico">${cat.icon}</div>
+      <div class="bk-cat">${cat.name}</div>
+      <div class="bk-amt">${fmt(indAmt + sharedAmt/2)}</div>
+      ${shLine}${cardLine}
+    `;
     bkEl.appendChild(card);
   });
   if (bkEl.innerHTML === "") bkEl.innerHTML = `<p class="empty">Sin gastos este período</p>`;
+
+  // Resumen de cuotas
+  const cuotaSav  = calcCuotaAhorro(person);
+  const cuotaDebt = calcCuotaDeuda(person);
+  const netSalary = b.income - cuotaSav - cuotaDebt;
+  const cuotaEl   = document.getElementById(`cuota-summary-${person}`);
+  if (cuotaEl) cuotaEl.innerHTML = `
+    <div class="cuota-row">
+      <span class="cuota-lbl">💼 Salario base</span>
+      <span class="cuota-val">${fmt(b.income)}</span>
+    </div>
+    <div class="cuota-row">
+      <span class="cuota-lbl">🏦 Cuotas ahorro</span>
+      <span class="cuota-val saving">− ${fmt(cuotaSav)}</span>
+    </div>
+    <div class="cuota-row">
+      <span class="cuota-lbl">💳 Cuotas deuda</span>
+      <span class="cuota-val debt">− ${fmt(cuotaDebt)}</span>
+    </div>
+    <div class="cuota-row" style="border-top:1px solid var(--border);padding-top:6px;margin-top:2px">
+      <span class="cuota-lbl">📊 Salario neto para gastos</span>
+      <span class="cuota-val ${netSalary < 0 ? 'neg' : 'net'}">${fmt(netSalary)}</span>
+    </div>
+  `;
+
+  // Gráfico circular
+  const totalGastos  = myInd + myShare;
+  renderChart(person, b.income, cuotaSav, cuotaDebt, totalGastos);
+
+  // Módulos ahorro y deuda
+  renderSavings(person);
+  renderDebts(person);
 
   // Formulario
   document.getElementById("form-p"+person).innerHTML = buildForm(person);
@@ -976,6 +1935,19 @@ function buildForm(person) {
             <option value="individual">Solo mío (individual)</option>
             <option value="shared">Compartido (÷ 2)</option>
           </select>
+        </div>
+        <div class="fg">
+          <label>Forma de pago</label>
+          <div class="switch-row" id="sw-row-p${person}"
+               onclick="document.getElementById('sw-card-p${person}').click()">
+            <span class="sw-lbl" id="sw-lbl-p${person}">💵 Sin tarjeta — solo categoría</span>
+            <div class="switch-wrap">
+              <input type="checkbox" id="sw-card-p${person}"
+                     onchange="updateSwitchUI(${person})"
+                     onclick="event.stopPropagation()"/>
+              <div class="switch-track"></div>
+            </div>
+          </div>
         </div>
       </div>
       <button class="btn-add" onclick="addExpense(${person})">+ Agregar gasto</button>
@@ -1028,16 +2000,15 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
       const whoLbl     = isShared ? "compartido" : e.type==="p1" ? "Marvin" : "Karol";
       const qClass     = q===1 ? "t-q1" : "t-q2";
       const qLbl       = q===1 ? "Q1·1–15" : "Q2·16–31";
+      // Tag de forma de pago
+      const payTag     = e.onCard
+        ? `<span class="tag tag-card">💳 tarjeta</span>`
+        : `<span class="tag tag-cash">💵 efectivo</span>`;
 
-      // Monto: si es compartido y estamos en vista privada, mostrar mitad (total)
-      let amtDisplay;
-      if (isShared && showDelete) {
-        amtDisplay = `<span class="shared-display">${fmt(e.amount/2)}</span><span class="shared-total">(${fmt(e.amount)})</span>`;
-      } else if (isShared && !showDelete) {
-        amtDisplay = `<span class="shared-display">${fmt(e.amount/2)}</span><span class="shared-total">(${fmt(e.amount)})</span>`;
-      } else {
-        amtDisplay = fmt(e.amount);
-      }
+      // Monto compartido → mitad (total)
+      const amtDisplay = isShared
+        ? `<span class="shared-display">${fmt(e.amount/2)}</span><span class="shared-total">(${fmt(e.amount)})</span>`
+        : fmt(e.amount);
 
       const del = showDelete
         ? `<td><button class="btn-del" onclick="deleteExpense(${e.id})" title="Eliminar">✕</button></td>`
@@ -1050,6 +2021,7 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
           <td class="col-dt">${e.date}</td>
           <td class="col-q"><span class="tag ${qClass}">${qLbl}</span></td>
           <td><span class="tag ${whoClass}">${whoLbl}</span></td>
+          <td>${payTag}</td>
           ${del}
         </tr>`;
     }).join("");
@@ -1062,7 +2034,8 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
             <th>Monto</th>
             <th class="col-dt">Fecha</th>
             <th class="col-q">Qna</th>
-            <th>Tipo</th>${delTh}
+            <th>Tipo</th>
+            <th>Pago</th>${delTh}
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -1095,7 +2068,14 @@ function renderAll() {
 }
 
 document.getElementById("pub-month").value = currentMonth();
-loadExpenses().then(() => subscribeRealtime());
+Promise.all([loadExpenses(), loadBudgets(), loadSavings(), loadDebts()])
+  .then(() => {
+    subscribeRealtime();
+    subscribeBudgetRealtime();
+    subscribeSavingsRealtime();
+    subscribeDebtsRealtime();
+    renderAll();
+  });
 </script>
 </body>
 </html>
