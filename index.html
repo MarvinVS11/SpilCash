@@ -67,8 +67,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 /* ── Period bar ── */
 .period-bar { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--r); padding: 10px 14px; display: flex; align-items: center; gap: 11px; flex-wrap: wrap; margin-bottom: 16px; }
 .period-bar label { font-size: 0.63rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
-.period-bar input[type="month"] { background: var(--surface); border: 1.5px solid var(--border); border-radius: 6px; color: var(--text); padding: 5px 9px; font-family: inherit; font-size: 0.79rem; cursor: pointer; }
-.period-bar input[type="month"]:focus { outline: none; border-color: var(--a1); }
+.period-bar input[type="month"],
+.period-bar .month-select { background: var(--surface); border: 1.5px solid var(--border); border-radius: 6px; color: var(--text); padding: 5px 9px; font-family: inherit; font-size: 0.79rem; cursor: pointer; }
+.period-bar input[type="month"]:focus,
+.period-bar .month-select:focus { outline: none; border-color: var(--a1); }
+.period-bar .month-select option { background: var(--surface); }
 .q-pills { display: flex; gap: 5px; flex-wrap: wrap; }
 .q-pill { background: transparent; border: 1.5px solid var(--border); color: var(--muted); padding: 3px 10px; border-radius: 20px; font-family: inherit; font-size: 0.65rem; letter-spacing: 1px; cursor: pointer; transition: var(--tr); white-space: nowrap; }
 .q-pill:hover { border-color: var(--sh); color: var(--sh); }
@@ -419,6 +422,45 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .chart-legend-lbl { color: var(--muted); flex: 1; }
 .chart-legend-val { font-weight: 700; color: var(--text); }
 
+/* ── Edición inline en la fila del gasto ── */
+.row-editing td { background: var(--surface) !important; }
+
+/* Inputs/selects inline dentro de la celda */
+.cell-input {
+  background: var(--card);
+  border: 1.5px solid var(--a1);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 3px 5px;
+  font-family: inherit;
+  font-size: 0.74rem;
+  width: 100%;
+  min-width: 0;
+}
+.cell-input:focus { outline: none; border-color: var(--sh); }
+
+.btn-edit {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: 0.72rem; padding: 2px 5px;
+  border-radius: 4px; transition: color var(--tr), background var(--tr);
+}
+.btn-edit:hover { color: var(--a1); background: rgba(91,138,255,0.12); }
+.btn-edit.editing { color: var(--sh); }
+
+.btn-save-edit {
+  background: var(--sh); color: #0d1a16; border: none; border-radius: 5px;
+  padding: 3px 8px; font-family: inherit; font-size: 0.65rem;
+  font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  cursor: pointer; white-space: nowrap;
+}
+.btn-cancel-edit {
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 5px; padding: 3px 7px; font-family: inherit; font-size: 0.65rem;
+  letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+  white-space: nowrap;
+}
+.btn-cancel-edit:hover { border-color: var(--danger); color: var(--danger); }
+
 /* ── Responsive ── */
 @media (max-width: 520px) {
   header { padding: 10px 11px; }
@@ -459,7 +501,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
     <p class="sec">/ Período</p>
     <div class="period-bar">
       <label>Mes:</label>
-      <input type="month" id="pub-month" onchange="renderPublic()"/>
+      <select id="pub-month" class="month-select" onchange="renderPublic()"></select>
       <label>Quincena:</label>
       <div class="q-pills">
         <button class="q-pill active" id="pub-q1" onclick="setPubQ(1)">1ª · 1–15</button>
@@ -521,7 +563,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Período -->
       <div class="period-bar">
         <label>Mes:</label>
-        <input type="month" id="p1-month" onchange="onMonthChange(1)"/>
+        <select id="p1-month" class="month-select" onchange="onMonthChange(1)"></select>
         <label>Quincena:</label>
         <div class="q-pills">
           <button class="q-pill active" id="p1-q1" onclick="setPrivQ(1,1)">1ª · 1–15</button>
@@ -636,7 +678,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Período -->
       <div class="period-bar">
         <label>Mes:</label>
-        <input type="month" id="p2-month" onchange="onMonthChange(2)"/>
+        <select id="p2-month" class="month-select" onchange="onMonthChange(2)"></select>
         <label>Quincena:</label>
         <div class="q-pills">
           <button class="q-pill active" id="p2-q1" onclick="setPrivQ(2,1)">1ª · 1–15</button>
@@ -802,6 +844,49 @@ let pubQ            = 1;
 const privQ         = { 1: 1, 2: 1 };
 const loggedIn      = { 1: false, 2: false };
 const PAGES         = ["public", "p1", "p2"];
+
+/* ─────────────────────────────────────────────────────────────
+   3.3b  SELECTOR DE MES PERSONALIZADO
+   ─────────────────────────────────────────────────────────────
+   Puebla los <select class="month-select"> con opciones
+   en formato "Jun 2026" para los últimos 12 meses y los
+   próximos 2, con el mes actual seleccionado por defecto.
+───────────────────────────────────────────────────────────── */
+const MES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+/**
+ * Genera las opciones del selector de mes.
+ * Muestra 12 meses anteriores + mes actual + 2 futuros.
+ * value sigue siendo "YYYY-MM" para compatibilidad con el resto del código.
+ */
+function buildMonthOptions(selectedValue) {
+  const now    = new Date();
+  const opts   = [];
+  // Desde 12 meses atrás hasta 2 meses adelante
+  for (let delta = -12; delta <= 2; delta++) {
+    const d   = new Date(now.getFullYear(), now.getMonth() + delta, 1);
+    const val = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    const lbl = MES_CORTO[d.getMonth()] + " " + d.getFullYear();
+    const sel = val === selectedValue ? " selected" : "";
+    opts.push("<option value='" + val + "'" + sel + ">" + lbl + "</option>");
+  }
+  return opts.join("");
+}
+
+/**
+ * Inicializa (o actualiza) todos los selectores de mes en la página.
+ * Llámalo al arrancar y cuando necesites refrescar las opciones.
+ */
+function initMonthSelects() {
+  const current = currentMonth();
+  ["pub-month", "p1-month", "p2-month"].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prev = el.value || current;
+    el.innerHTML = buildMonthOptions(prev);
+    if (!el.value) el.value = current;
+  });
+}
 
 /* ─────────────────────────────────────────────────────────────
    3.4  UTILIDADES DE FECHA Y PERÍODO
@@ -987,8 +1072,7 @@ function tryLogin(person) {
     errEl.style.display = "none";
     document.getElementById("login-p"+person).style.display  = "none";
     document.getElementById("panel-p"+person).style.display  = "block";
-    const mEl = document.getElementById("p"+person+"-month");
-    if (!mEl.value) mEl.value = currentMonth();
+    initMonthSelects();
     renderPrivate(person);
   } else {
     errEl.style.display = "block";
@@ -1633,6 +1717,107 @@ async function deleteExpense(id) {
   }
 }
 
+/**
+ * Activa/desactiva la edición inline de una fila.
+ * Reemplaza el contenido de cada celda por un input/select editable.
+ */
+function editExpense(id) {
+  const e = expenses.find(ex => ex.id === id);
+  if (!e) return;
+
+  const row = document.getElementById("exp-row-" + id);
+  if (!row) return;
+
+  // Toggle: si ya está en modo edición, cancelar
+  if (row.classList.contains("row-editing")) {
+    closeEditExpense(id);
+    return;
+  }
+  row.classList.add("row-editing");
+
+  // Guardar HTML original para poder cancelar
+  row.dataset.origHtml = row.innerHTML;
+
+  const catOpts = CATEGORIES.map(cat =>
+    "<option value='" + cat.id + "'" + (cat.id === e.catId ? " selected" : "") + ">"
+    + cat.icon + " " + cat.name + "</option>"
+  ).join("");
+
+  const isUSD   = e.moneda === "USD";
+  const monOpts = "<option value='CRC'" + (!isUSD ? " selected" : "") + ">\u00a2 CRC</option>"
+                + "<option value='USD'" + (isUSD  ? " selected" : "") + ">$ USD</option>";
+  const typOpts = "<option value='individual'" + (e.type !== "shared" ? " selected" : "") + ">Ind.</option>"
+                + "<option value='shared'"     + (e.type === "shared" ? " selected" : "") + ">Comp.</option>";
+
+  // Reemplazar cada celda con su versión editable
+  row.innerHTML =
+    // Col 1: descripción + badge moneda
+    "<td><input class='cell-input' id='ed-desc-" + id + "' value='" + e.desc.replace(/'/g,"&#39;") + "'/></td>"
+    // Col 2: monto
+    + "<td><input class='cell-input' id='ed-amt-" + id + "' type='number' value='" + e.amount + "' min='1' step='100' style='width:80px'/>"
+    + "<br><select class='cell-input' id='ed-mon-" + id + "' style='width:80px;margin-top:3px'>" + monOpts + "</select></td>"
+    // Col 3: fecha
+    + "<td class='col-dt'><input class='cell-input' id='ed-date-" + id + "' type='date' value='" + e.date + "'/></td>"
+    // Col 4: qna (solo lectura)
+    + "<td class='col-q'><span class='tag " + (e.date && parseInt(e.date.split('-')[2])<=15 ? 't-q1' : 't-q2') + "'>"
+    + (e.date && parseInt(e.date.split('-')[2])<=15 ? 'Q1' : 'Q2') + "</span></td>"
+    // Col 5: tipo
+    + "<td><select class='cell-input' id='ed-type-" + id + "' style='width:70px'>" + typOpts + "</select></td>"
+    // Col 6: categoría (pago — no editable en esta versión)
+    + "<td><select class='cell-input' id='ed-cat-" + id + "'>" + catOpts + "</select></td>"
+    // Col 7: acciones guardar/cancelar
+    + "<td style='white-space:nowrap'>"
+    + "<button class='btn-save-edit' onclick='saveEditExpense(" + id + "," + e.person + ")'>✓</button> "
+    + "<button class='btn-cancel-edit' onclick='closeEditExpense(" + id + ")'>✕</button>"
+    + "</td>";
+}
+
+function closeEditExpense(id) {
+  const row = document.getElementById("exp-row-" + id);
+  if (!row) return;
+  if (row.dataset.origHtml) row.innerHTML = row.dataset.origHtml;
+  row.classList.remove("row-editing");
+  delete row.dataset.origHtml;
+}
+
+async function saveEditExpense(id, person) {
+  const desc    = document.getElementById("ed-desc-"  + id)?.value.trim();
+  const amount  = parseFloat(document.getElementById("ed-amt-"  + id)?.value);
+  const moneda  = document.getElementById("ed-mon-"   + id)?.value || "CRC";
+  const date    = document.getElementById("ed-date-"  + id)?.value;
+  const typeVal = document.getElementById("ed-type-"  + id)?.value;
+  const catId   = document.getElementById("ed-cat-"   + id)?.value;
+
+  if (!desc)                     { showToast("Ingresa una descripci\u00f3n", "err"); return; }
+  if (isNaN(amount)||amount <= 0){ showToast("Ingresa un monto v\u00e1lido",  "err"); return; }
+
+  const tipoCambio = moneda === "USD" ? getLastTipoCambio(person) : 1;
+  const amountCRC  = moneda === "USD" ? amount * tipoCambio : amount;
+  const type       = typeVal === "shared" ? "shared" : "p" + person;
+
+  const saveBtn = document.querySelector("#exp-row-" + id + " .btn-save-edit");
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "..."; }
+
+  try {
+    const { error } = await db.from(TABLE).update({
+      desc, amount, amount_crc: amountCRC,
+      cat_id: catId, type, date,
+      moneda, tipo_cambio: tipoCambio,
+    }).eq("id", id);
+
+    if (error) {
+      showToast("Error: " + (error.message || "al guardar"), "err");
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "\u2713"; }
+    } else {
+      showToast("\u2713 Gasto actualizado", "ok");
+      // El realtime actualizará la fila automáticamente
+    }
+  } catch (err) {
+    showToast("Error: " + (err.message || String(err)), "err");
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "\u2713"; }
+  }
+}
+
 /* ─────────────────────────────────────────────────────────────
    3.11 CÁLCULOS
 ───────────────────────────────────────────────────────────── */
@@ -2100,10 +2285,13 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
         ? `<span class="currency-badge usd">USD</span>`
         : `<span class="currency-badge crc">CRC</span>`;
       const del = showDelete
-        ? `<td><button class="btn-del" onclick="deleteExpense(${e.id})" title="Eliminar">✕</button></td>`
+        ? `<td style="white-space:nowrap">
+            <button class="btn-edit" onclick="editExpense(${e.id})" title="Editar">✏️</button>
+            <button class="btn-del"  onclick="deleteExpense(${e.id})" title="Eliminar">✕</button>
+           </td>`
         : "";
 
-      return `<tr>
+      return `<tr id="exp-row-${e.id}">
           <td>${e.desc} ${badge}</td>
           <td>${amtDisplay}</td>
           <td class="col-dt">${e.date}</td>
@@ -2150,7 +2338,7 @@ function renderAll() {
   if (loggedIn[2]) renderPrivate(2);
 }
 
-document.getElementById("pub-month").value = currentMonth();
+initMonthSelects();
 Promise.all([loadExpenses(), loadBudgets(), loadSavings(), loadDebts()])
   .then(() => {
     subscribeRealtime();
