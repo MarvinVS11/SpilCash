@@ -1814,42 +1814,50 @@ function renderPrivate(person) {
   const myDebt   = calcDebt(person, filtered);
   const debtOver = myDebt > b.income && b.income > 0;
 
-  // ── Tarjetas de resumen ──────────────────────────────────────
-  document.getElementById(`pi-inc${person}`).textContent  = fmt(b.income);
-  document.getElementById(`pi-ind${person}`).textContent  = fmt(myInd);
-  document.getElementById(`pi-sh${person}`).textContent   = fmt(myShare);
-  document.getElementById(`pi-sav${person}`).textContent  = fmt(b.saving);
-  document.getElementById(`pi-sub${person}`).textContent  = label;
+  // Tarjetas resumen
+  document.getElementById("pi-inc"+person).textContent  = fmt(b.income);
+  document.getElementById("pi-ind"+person).textContent  = fmt(myInd);
+  document.getElementById("pi-sh"+person).textContent   = fmt(myShare);
+  document.getElementById("pi-sav"+person).textContent  = fmt(b.saving);
+  document.getElementById("pi-sub"+person).textContent  = label;
 
-  const debtEl  = document.getElementById(`pi-debt${person}`);
-  const debtSub = debtEl?.nextElementSibling;
-  debtEl.textContent = fmt(myDebt);
-  debtEl.className   = "amt " + (debtOver ? "cneg" : "cdebt");
-  if (debtSub && debtSub.classList.contains("sub"))
-    debtSub.textContent = debtOver ? "\u26a0\ufe0f supera el salario" : "gastos con tarjeta";
+  const debtEl = document.getElementById("pi-debt"+person);
+  if (debtEl) {
+    debtEl.textContent = fmt(myDebt);
+    debtEl.className   = "amt " + (debtOver ? "cneg" : "cdebt");
+    const debtSub = debtEl.nextElementSibling;
+    if (debtSub && debtSub.classList.contains("sub"))
+      debtSub.textContent = debtOver ? "supera el salario" : "gastos con tarjeta";
+  }
 
-  const balEl = document.getElementById(`pi-bal${person}`);
-  balEl.textContent = fmt(saldo);
-  balEl.className   = "amt " + (saldo < 0 ? "cneg" : "ctot");
+  const balEl = document.getElementById("pi-bal"+person);
+  if (balEl) {
+    balEl.textContent = fmt(saldo);
+    balEl.className   = "amt " + (saldo < 0 ? "cneg" : "ctot");
+  }
 
-  // ── Barra de saldo ────────────────────────────────────────────
-  const saldoNum  = document.getElementById(`saldo-num-${person}`);
-  const saldoFill = document.getElementById(`saldo-fill-${person}`);
-  saldoNum.textContent = fmt(saldo);
-  saldoNum.className   = "saldo-num " + (saldo < 0 ? "neg" : "pos");
-  const pct = b.income > 0 ? Math.max(0, Math.min(100, (saldo / b.income) * 100)) : 0;
-  saldoFill.style.width      = pct + "%";
-  saldoFill.style.background = saldo < 0 ? "var(--danger)" : saldo < b.income * 0.2 ? "var(--warn)" : "var(--saving)";
+  // Barra saldo
+  const saldoNum  = document.getElementById("saldo-num-"+person);
+  const saldoFill = document.getElementById("saldo-fill-"+person);
+  if (saldoNum) {
+    saldoNum.textContent = fmt(saldo);
+    saldoNum.className   = "saldo-num " + (saldo < 0 ? "neg" : "pos");
+  }
+  if (saldoFill) {
+    const pct = b.income > 0 ? Math.max(0, Math.min(100, (saldo / b.income) * 100)) : 0;
+    saldoFill.style.width      = pct + "%";
+    saldoFill.style.background = saldo < 0 ? "var(--danger)" : saldo < b.income * 0.2 ? "var(--warn)" : "var(--saving)";
+  }
 
-  // ── Budget row ────────────────────────────────────────────────
-  const brEl2 = document.getElementById(`budget-row-${person}`);
-  if (brEl2) brEl2.innerHTML = buildBudgetRow(person);
+  // Budget row
+  const brEl = document.getElementById("budget-row-"+person);
+  if (brEl) brEl.innerHTML = buildBudgetRow(person);
 
-  // ── Desglose por categoría ────────────────────────────────────
-  const bkEl = document.getElementById(`priv-breakdown-${person}`);
+  // Desglose por categoria
+  const bkEl = document.getElementById("priv-breakdown-"+person);
   if (bkEl) {
     bkEl.innerHTML = "";
-    CATEGORIES.forEach(cat => {
+    CATEGORIES.forEach(function(cat) {
       const catMine   = mine.filter(e => e.catId === cat.id);
       const total     = catMine.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
       if (total === 0) return;
@@ -1859,71 +1867,67 @@ function renderPrivate(person) {
       const card      = document.createElement("div");
       card.className  = "bk-card";
       const shLine    = sharedAmt > 0
-        ? `<div class="bk-sh">compartido: ${fmt(sharedAmt/2)} (${fmt(sharedAmt)})</div>`
-        : `<div class="bk-sh">individual</div>`;
+        ? "<div class='bk-sh'>compartido: " + fmt(sharedAmt/2) + " (" + fmt(sharedAmt) + ")</div>"
+        : "<div class='bk-sh'>individual</div>";
       const cardLine  = cardAmt > 0
-        ? `<div class="bk-sh" style="color:var(--debt)">\U0001F4B3 tarjeta: ${fmt(cardAmt)}</div>`
+        ? "<div class='bk-sh' style='color:var(--debt)'>tarjeta: " + fmt(cardAmt) + "</div>"
         : "";
-      card.innerHTML = `
-        <div class="bk-ico">${cat.icon}</div>
-        <div class="bk-cat">${cat.name}</div>
-        <div class="bk-amt">${fmt(indAmt + sharedAmt/2)}</div>
-        ${shLine}${cardLine}`;
+      card.innerHTML  = "<div class='bk-ico'>" + cat.icon + "</div>"
+        + "<div class='bk-cat'>" + cat.name + "</div>"
+        + "<div class='bk-amt'>" + fmt(indAmt + sharedAmt/2) + "</div>"
+        + shLine + cardLine;
       bkEl.appendChild(card);
     });
-    if (bkEl.innerHTML === "") bkEl.innerHTML = `<p class="empty">Sin gastos este per\u00edodo</p>`;
+    if (bkEl.innerHTML === "") bkEl.innerHTML = "<p class='empty'>Sin gastos este periodo</p>";
   }
 
-  // ── Cuota summary ─────────────────────────────────────────────
+  // Cuota summary — solo texto plano, sin emojis en el template
   const cuotaSav  = calcCuotaAhorro(person);
   const cuotaDebt = calcCuotaDeuda(person);
   const netSalary = b.income - cuotaSav - cuotaDebt;
-  const cuotaEl   = document.getElementById(`cuota-summary-${person}`);
-  if (cuotaEl) cuotaEl.innerHTML = `
-    <div class="cuota-row">
-      <span class="cuota-lbl">\U0001F4BC Salario base</span>
-      <span class="cuota-val">${fmt(b.income)}</span>
-    </div>
-    <div class="cuota-row">
-      <span class="cuota-lbl">\U0001F3E6 Cuotas ahorro</span>
-      <span class="cuota-val saving">\u2212 ${fmt(cuotaSav)}</span>
-    </div>
-    <div class="cuota-row">
-      <span class="cuota-lbl">\U0001F4B3 Cuotas deuda</span>
-      <span class="cuota-val debt">\u2212 ${fmt(cuotaDebt)}</span>
-    </div>
-    <div class="cuota-row" style="border-top:1px solid var(--border);padding-top:6px;margin-top:2px">
-      <span class="cuota-lbl">\U0001F4CA Salario neto para gastos</span>
-      <span class="cuota-val ${netSalary < 0 ? "neg" : "net"}">${fmt(netSalary)}</span>
-    </div>`;
-
-  // ── Gráfico circular (en try/catch para no bloquear el resto) ─
-  try {
-    const totalGastos = myInd + myShare;
-    renderChart(person, b.income, cuotaSav, cuotaDebt, totalGastos);
-  } catch(e) {
-    console.warn("renderChart error:", e.message);
+  const cuotaEl   = document.getElementById("cuota-summary-"+person);
+  if (cuotaEl) {
+    cuotaEl.innerHTML =
+      "<div class='cuota-row'><span class='cuota-lbl'>Salario base</span><span class='cuota-val'>" + fmt(b.income) + "</span></div>" +
+      "<div class='cuota-row'><span class='cuota-lbl'>Cuotas ahorro</span><span class='cuota-val saving'>- " + fmt(cuotaSav) + "</span></div>" +
+      "<div class='cuota-row'><span class='cuota-lbl'>Cuotas deuda</span><span class='cuota-val debt'>- " + fmt(cuotaDebt) + "</span></div>" +
+      "<div class='cuota-row' style='border-top:1px solid var(--border);padding-top:6px;margin-top:2px'>" +
+        "<span class='cuota-lbl'>Salario neto para gastos</span>" +
+        "<span class='cuota-val " + (netSalary < 0 ? "neg" : "net") + "'>" + fmt(netSalary) + "</span>" +
+      "</div>";
   }
 
-  // ── Módulos ahorro y deuda ────────────────────────────────────
-  try { renderSavings(person); } catch(e) { console.warn("renderSavings:", e.message); }
-  try { renderDebts(person);   } catch(e) { console.warn("renderDebts:",   e.message); }
+  // Grafico circular
+  try {
+    renderChart(person, b.income, cuotaSav, cuotaDebt, myInd + myShare);
+  } catch(err) { console.warn("renderChart:", err.message); }
 
-  // ── Formulario de nuevo gasto ─────────────────────────────────
-  const formEl = document.getElementById("form-p" + person);
-  if (formEl) formEl.innerHTML = buildForm(person);
+  // Modulos ahorro y deuda
+  try { renderSavings(person); } catch(err) { console.warn("renderSavings:", err.message); }
+  try { renderDebts(person);   } catch(err) { console.warn("renderDebts:",   err.message); }
 
-  // ── Acordeón de gastos del período ───────────────────────────
-  const container = document.getElementById("priv-cats-p" + person);
+  // Formulario de nuevo gasto
+  var formEl = document.getElementById("form-p"+person);
+  if (formEl) {
+    try {
+      formEl.innerHTML = buildForm(person);
+    } catch(err) {
+      console.warn("buildForm error:", err.message);
+      formEl.innerHTML = "<p style='color:var(--danger);padding:10px'>Error cargando formulario: " + err.message + "</p>";
+    }
+  }
+
+  // Acordeon de gastos
+  var container = document.getElementById("priv-cats-p"+person);
   if (container) {
     container.innerHTML = "";
-    CATEGORIES.forEach(cat => {
-      const catExp = mine.filter(e => e.catId === cat.id);
-      const catTot = catExp.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+    CATEGORIES.forEach(function(cat) {
+      var catExp = mine.filter(e => e.catId === cat.id);
+      var catTot = catExp.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
       try {
         container.appendChild(buildAccordion(cat, catExp, catTot, true));
-      } catch(e) {
-        console.warn("buildAccordion error:", cat.id, e.message);
+      } catch(err) {
+        console.warn("buildAccordion " + cat.id + ":", err.message);
       }
     });
   }
