@@ -882,6 +882,7 @@ function mapRow(r) {
     moneda:    r.moneda     || "CRC",
     tipoCambio:parseFloat(r.tipo_cambio || 1),
   };
+}
 
 function getLastTipoCambio(person) {
   const usdDebt = debts
@@ -893,7 +894,6 @@ function getLastTipoCambio(person) {
     .sort((a, b) => b.id - a.id)[0];
   if (usdExp) return usdExp.tipoCambio;
   return 1;
-}
 }
 
 async function loadExpenses() {
