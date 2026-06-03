@@ -790,8 +790,22 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         <div class="item-list" id="debt-list-2"></div>
       </div>
 
+      <!-- Módulo Tarjetas (cortes) -->
+      <div class="module-section">
+        <div class="mod-header">
+          <span class="mod-header-title">🏧 Mis Tarjetas</span>
+          <button class="btn-add-item" onclick="showTarjetaForm(2)">+ Agregar tarjeta</button>
+        </div>
+        <div id="tarjeta-add-form-2"></div>
+        <div class="item-list" id="tarjeta-list-2"></div>
+      </div>
+
       <!-- Acordeón -->
       <p class="sec">/ Mis Gastos del Período</p>
+      <div class="vista-toggle" id="vista-toggle-2">
+        <button class="vista-btn active" id="vista-cal-2" onclick="setVista(2,'calendario')">📅 Mes calendario</button>
+        <button class="vista-btn" id="vista-cor-2" onclick="setVista(2,'corte')">💳 Corte de tarjeta</button>
+      </div>
       <div class="categories" id="priv-cats-p2"></div>
     </div>
   </div>
@@ -814,7 +828,7 @@ const BUDGET_TABLE = "presupuestos";
 const TARJETAS_TABLE = "tarjetas";
 
 // Usuario con el módulo de tarjetas+cortes habilitado (por ahora solo Marvin)
-const TARJETAS_HABILITADAS_PARA = [1];
+const TARJETAS_HABILITADAS_PARA = [1, 2];
 
 // Contraseñas — se persisten en localStorage para permitir cambio
 let PASSWORDS = JSON.parse(localStorage.getItem("sc_passwords") || '{"1":"clave1","2":"clave2"}');
