@@ -77,6 +77,27 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .q-pill:hover { border-color: var(--sh); color: var(--sh); }
 .q-pill.active { background: rgba(62,207,170,0.15); border-color: var(--sh); color: var(--sh); }
 
+/* ── Toggle vista calendario/corte ── */
+.vista-toggle { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.vista-btn {
+  background: transparent; border: 1.5px solid var(--border); color: var(--muted);
+  padding: 5px 12px; border-radius: 8px; font-family: inherit; font-size: 0.66rem;
+  letter-spacing: 0.5px; cursor: pointer; transition: var(--tr); white-space: nowrap;
+}
+.vista-btn:hover { border-color: var(--a1); color: var(--text); }
+.vista-btn.active { background: rgba(91,138,255,0.15); border-color: var(--a1); color: var(--a1); }
+
+/* ── Badge de corte de tarjeta ── */
+.corte-badge {
+  display: inline-block; font-size: 0.56rem; padding: 1px 6px; border-radius: 8px;
+  letter-spacing: 0.5px; margin-left: 4px; white-space: nowrap;
+  background: rgba(245,200,66,0.15); color: var(--warn); border: 1px solid rgba(245,200,66,0.3);
+}
+.tarjeta-badge {
+  display: inline-block; font-size: 0.56rem; padding: 1px 6px; border-radius: 8px;
+  letter-spacing: 0.5px; margin-left: 4px; white-space: nowrap; font-weight: 700;
+}
+
 /* ── Summary cards ── */
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
 .sc { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--r); padding: 14px 10px; text-align: center; }
@@ -639,8 +660,22 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         <div class="item-list" id="debt-list-1"></div>
       </div>
 
+      <!-- Módulo Tarjetas (cortes) -->
+      <div class="module-section">
+        <div class="mod-header">
+          <span class="mod-header-title">🏧 Mis Tarjetas</span>
+          <button class="btn-add-item" onclick="showTarjetaForm(1)">+ Agregar tarjeta</button>
+        </div>
+        <div id="tarjeta-add-form-1"></div>
+        <div class="item-list" id="tarjeta-list-1"></div>
+      </div>
+
       <!-- Acordeón -->
       <p class="sec">/ Mis Gastos del Período</p>
+      <div class="vista-toggle" id="vista-toggle-1">
+        <button class="vista-btn active" id="vista-cal-1" onclick="setVista(1,'calendario')">📅 Mes calendario</button>
+        <button class="vista-btn" id="vista-cor-1" onclick="setVista(1,'corte')">💳 Corte de tarjeta</button>
+      </div>
       <div class="categories" id="priv-cats-p1"></div>
     </div>
   </div>
@@ -775,6 +810,10 @@ const SUPABASE_URL      = "https://jztvonoiitoyjgecunxj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6dHZvbm9paXRveWpnZWN1bnhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTg2MDQsImV4cCI6MjA5NTY3NDYwNH0.eP1s7qqZEIGI7MWbJZ3sFiPdszLLMQzv8-ES5OD2F2A";
 const TABLE = "gastos";
 const BUDGET_TABLE = "presupuestos";
+const TARJETAS_TABLE = "tarjetas";
+
+// Usuario con el módulo de tarjetas+cortes habilitado (por ahora solo Marvin)
+const TARJETAS_HABILITADAS_PARA = [1];
 
 // Contraseñas — se persisten en localStorage para permitir cambio
 let PASSWORDS = JSON.parse(localStorage.getItem("sc_passwords") || '{"1":"clave1","2":"clave2"}');
@@ -806,6 +845,7 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let expenses = [];   // espejo de la tabla gastos
+let tarjetas = [];   // espejo de la tabla tarjetas (solo se usa para usuarios habilitados)
 
 // Presupuesto indexado por clave "person-month-q" donde q=1 o 2.
 // Cada quincena es INDEPENDIENTE por usuario y por mes.
@@ -909,10 +949,29 @@ function quincena(dateStr) {
   return parseInt(dateStr.split("-")[2], 10) <= 15 ? 1 : 2;
 }
 
+// Modo de vista por usuario: 'calendario' (fecha real) o 'corte' (mes de corte de tarjeta)
+const vistaPriv = { 1: "calendario", 2: "calendario" };
+
 function filterByPeriod(arr, month, q) {
   return arr.filter(e => {
     if (!(e.date || "").startsWith(month)) return false;
     return q === 0 || quincena(e.date) === q;
+  });
+}
+
+/**
+ * Filtra gastos de una persona según el modo de vista:
+ *  - 'calendario': por fecha real (igual que filterByPeriod, con quincena)
+ *  - 'corte': por mes_corte de la tarjeta. Las compras con tarjeta caen
+ *    en su mes de corte; las de efectivo siguen su fecha real.
+ *    En modo corte la quincena no aplica (un corte es mensual).
+ */
+function filterByVista(arr, person, month, q) {
+  const modo = vistaPriv[person] || "calendario";
+  if (modo !== "corte") return filterByPeriod(arr, month, q);
+  return arr.filter(e => {
+    const ref = e.mesCorte ? e.mesCorte : (e.date || "").slice(0, 7);
+    return ref === month;
   });
 }
 
@@ -937,6 +996,29 @@ function setPrivQ(person, q) {
   // Reconstruir budget row para mostrar los campos del período correcto
   const brEl = document.getElementById("budget-row-" + person);
   if (brEl) brEl.innerHTML = buildBudgetRow(person);
+  renderPrivate(person);
+}
+
+/**
+ * Cambia el modo de vista del listado de gastos:
+ *  - 'calendario': por fecha real de la compra
+ *  - 'corte': por mes de corte de la tarjeta
+ * En modo corte se desactivan las quincenas (un corte es mensual).
+ */
+function setVista(person, modo) {
+  vistaPriv[person] = modo;
+  const calBtn = document.getElementById(`vista-cal-${person}`);
+  const corBtn = document.getElementById(`vista-cor-${person}`);
+  if (calBtn) calBtn.classList.toggle("active", modo === "calendario");
+  if (corBtn) corBtn.classList.toggle("active", modo === "corte");
+  // En modo corte forzar "mes completo" (q=0) ya que el corte es mensual
+  if (modo === "corte") {
+    privQ[person] = 0;
+    [0,1,2].forEach(n => {
+      const el = document.getElementById(`p${person}-q${n}`);
+      if (el) el.classList.toggle("active", n === 0);
+    });
+  }
   renderPrivate(person);
 }
 
@@ -977,7 +1059,126 @@ function mapRow(r) {
     onCard:    r.on_card === true,
     moneda:    r.moneda     || "CRC",
     tipoCambio:parseFloat(r.tipo_cambio || 1),
+    tarjetaId: r.tarjeta_id != null ? Number(r.tarjeta_id) : null,
+    mesCorte:  r.mes_corte || null,
   };
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TARJETAS — helpers de corte
+   ─────────────────────────────────────────────────────────────
+   Cada tarjeta tiene un día de corte. Una compra pertenece al
+   corte del mes siguiente si su día es >= al día de corte;
+   de lo contrario pertenece al corte del mismo mes.
+───────────────────────────────────────────────────────────── */
+function tarjetasDe(person) {
+  return tarjetas.filter(t => t.person === person);
+}
+function getTarjeta(id) {
+  return tarjetas.find(t => t.id === Number(id)) || null;
+}
+/** Calcula el mes de corte 'YYYY-MM' de una compra según el día de corte */
+function calcularMesCorte(fechaCompra, diaCorte) {
+  const d = new Date(fechaCompra + "T00:00:00");
+  if (d.getDate() >= diaCorte) {
+    d.setMonth(d.getMonth() + 1);
+  }
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+/** Etiqueta corta del corte, ej "Jun 2026" */
+function etiquetaCorte(mesCorte) {
+  if (!mesCorte) return "";
+  const [y, m] = mesCorte.split("-");
+  return MES_CORTO[parseInt(m, 10) - 1] + " " + y;
+}
+
+async function loadTarjetas() {
+  const { data, error } = await db.from(TARJETAS_TABLE).select("*").order("id");
+  if (error) { console.error("loadTarjetas:", error.message); return; }
+  tarjetas = (data || []).map(r => ({
+    id:       Number(r.id),
+    person:   r.person,
+    nombre:   r.nombre,
+    diaCorte: Number(r.dia_corte),
+    color:    r.color || "#5b8aff",
+  }));
+}
+
+function subscribeTarjetasRealtime() {
+  db.channel("tarjetas-rt")
+    .on("postgres_changes", { event: "*", schema: "public", table: TARJETAS_TABLE }, () => {
+      loadTarjetas().then(renderAll);
+    })
+    .subscribe();
+}
+
+// ── CRUD de tarjetas ───────────────────────────────────────────
+function showTarjetaForm(person) {
+  const el = document.getElementById(`tarjeta-add-form-${person}`);
+  if (!el) return;
+  if (el.innerHTML) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+    <div class="item-add-form">
+      <div class="item-add-grid">
+        <div class="fg span2">
+          <label>Nombre de la tarjeta</label>
+          <input type="text" id="tj-nombre-${person}" placeholder="Ej: BAC Black…"/>
+        </div>
+        <div class="fg">
+          <label>Día de corte (1-31)</label>
+          <input type="number" id="tj-corte-${person}" placeholder="15" min="1" max="31"/>
+        </div>
+        <div class="fg">
+          <label>Color</label>
+          <input type="color" id="tj-color-${person}" value="#5b8aff" style="height:34px;padding:2px"/>
+        </div>
+      </div>
+      <button class="btn-add" onclick="addTarjeta(${person})">+ Guardar tarjeta</button>
+      <button class="btn-add" style="background:var(--card2);margin-left:8px" onclick="document.getElementById('tarjeta-add-form-${person}').innerHTML=''">Cancelar</button>
+    </div>
+  `;
+}
+
+async function addTarjeta(person) {
+  const nombre = document.getElementById(`tj-nombre-${person}`)?.value.trim();
+  const corte  = parseInt(document.getElementById(`tj-corte-${person}`)?.value, 10);
+  const color  = document.getElementById(`tj-color-${person}`)?.value || "#5b8aff";
+  if (!nombre)                        { showToast("Ingresa un nombre", "err"); return; }
+  if (isNaN(corte) || corte < 1 || corte > 31) { showToast("Día de corte inválido (1-31)", "err"); return; }
+  const { error } = await db.from(TARJETAS_TABLE).insert({ person, nombre, dia_corte: corte, color });
+  if (error) { showToast("Error: " + (error.message||""), "err"); return; }
+  showToast("✓ Tarjeta guardada", "ok");
+  document.getElementById(`tarjeta-add-form-${person}`).innerHTML = "";
+}
+
+async function deleteTarjeta(id) {
+  if (!confirm("¿Eliminar esta tarjeta? Los gastos ya registrados con ella no se borran.")) return;
+  const { error } = await db.from(TARJETAS_TABLE).delete().eq("id", id);
+  if (error) showToast("Error al eliminar", "err");
+  else showToast("✓ Tarjeta eliminada", "ok");
+}
+
+function renderTarjetas(person) {
+  const list = document.getElementById(`tarjeta-list-${person}`);
+  if (!list) return;
+  const mis = tarjetasDe(person);
+  if (mis.length === 0) {
+    list.innerHTML = `<p class="empty">Sin tarjetas. Agrega una para registrar compras con su corte.</p>`;
+    return;
+  }
+  list.innerHTML = "";
+  mis.forEach(t => {
+    const card = document.createElement("div");
+    card.className = "item-card";
+    card.style.borderLeft = "3px solid " + t.color;
+    card.innerHTML =
+      "<div class='item-card-header'>"
+      + "<span class='item-card-title'>💳 " + t.nombre + "</span>"
+      + "<button class='item-card-del' onclick='deleteTarjeta(" + t.id + ")' title='Eliminar'>✕</button>"
+      + "</div>"
+      + "<div style='font-size:0.72rem;color:var(--muted)'>Corte el día <strong style='color:" + t.color + "'>" + t.diaCorte + "</strong> de cada mes</div>";
+    list.appendChild(card);
+  });
 }
 
 function getLastTipoCambio(person) {
@@ -1656,10 +1857,28 @@ async function addExpense(person) {
   const date       = document.getElementById(`inp-date-p${person}`).value || today();
   const catId      = document.getElementById(`inp-cat-p${person}`).value;
   const type       = document.getElementById(`inp-type-p${person}`).value;
-  const onCard     = document.getElementById(`sw-card-p${person}`)?.checked === true;
   const moneda     = document.getElementById(`inp-moneda-p${person}`)?.value || "CRC";
   const tipoCambio = moneda === "USD" ? getLastTipoCambio(person) : 1;
   const amountCRC  = moneda === "USD" ? amount * tipoCambio : amount;
+
+  // Forma de pago: selector de tarjetas (habilitado) o switch (resto)
+  const usaTarjetas = TARJETAS_HABILITADAS_PARA.includes(person);
+  let onCard = false;
+  let tarjetaId = null;
+  let mesCorte = null;
+  if (usaTarjetas) {
+    const pagoVal = document.getElementById(`inp-pago-p${person}`)?.value || "efectivo";
+    if (pagoVal !== "efectivo") {
+      const tj = getTarjeta(pagoVal);
+      if (tj) {
+        onCard    = true;
+        tarjetaId = tj.id;
+        mesCorte  = calcularMesCorte(date, tj.diaCorte);
+      }
+    }
+  } else {
+    onCard = document.getElementById(`sw-card-p${person}`)?.checked === true;
+  }
 
   if (!desc)                    { document.getElementById(`inp-desc-p${person}`).focus(); return; }
   if (isNaN(amount)||amount<=0) { document.getElementById(`inp-amt-p${person}`).focus();  return; }
@@ -1675,6 +1894,8 @@ async function addExpense(person) {
       on_card:     onCard,
       moneda,
       tipo_cambio: tipoCambio,
+      tarjeta_id:  tarjetaId,
+      mes_corte:   mesCorte,
     });
 
     if (error) {
@@ -1685,9 +1906,11 @@ async function addExpense(person) {
       showToast("✓ Gasto guardado", "ok");
       document.getElementById(`inp-desc-p${person}`).value = "";
       document.getElementById(`inp-amt-p${person}`).value  = "";
-      // Resetear switch a efectivo tras guardar
+      // Resetear switch a efectivo tras guardar (si aplica)
       const sw = document.getElementById(`sw-card-p${person}`);
       if (sw) { sw.checked = false; updateSwitchUI(person); }
+      const pagoEl = document.getElementById(`inp-pago-p${person}`);
+      if (pagoEl) { pagoEl.value = "efectivo"; updateCorteUI(person); }
     }
   } catch (e) {
     const msg = (e && typeof e.message === "string") ? e.message : String(e);
@@ -2101,6 +2324,13 @@ function renderPrivate(person) {
   // Modulos ahorro y deuda
   try { renderSavings(person); } catch(err) { console.warn("renderSavings:", err.message); }
   try { renderDebts(person);   } catch(err) { console.warn("renderDebts:",   err.message); }
+  // Tarjetas: solo para usuarios con el módulo habilitado
+  if (TARJETAS_HABILITADAS_PARA.includes(person)) {
+    try { renderTarjetas(person); } catch(err) { console.warn("renderTarjetas:", err.message); }
+  } else {
+    const vt = document.getElementById(`vista-toggle-${person}`);
+    if (vt) vt.style.display = "none";
+  }
 
   // Formulario de nuevo gasto
   var formEl = document.getElementById("form-p"+person);
@@ -2113,12 +2343,15 @@ function renderPrivate(person) {
     }
   }
 
-  // Acordeon de gastos
+  // Acordeon de gastos — usa el modo de vista (calendario o corte)
   var container = document.getElementById("priv-cats-p"+person);
   if (container) {
     container.innerHTML = "";
+    // En modo corte el listado se filtra por mes_corte; en calendario por fecha
+    var listado = filterByVista(expenses, person, month, privQ[person])
+                    .filter(e => e.person === person);
     CATEGORIES.forEach(function(cat) {
-      var catExp = mine.filter(e => e.catId === cat.id);
+      var catExp = listado.filter(e => e.catId === cat.id);
       var catTot = catExp.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
       try {
         container.appendChild(buildAccordion(cat, catExp, catTot, true));
@@ -2127,6 +2360,10 @@ function renderPrivate(person) {
       }
     });
   }
+
+  // Mostrar/ocultar pills de quincena según el modo (corte = mensual)
+  const qPills = document.querySelector(`#p${person}-q1`)?.parentElement;
+  if (qPills) qPills.style.opacity = (vistaPriv[person] === "corte") ? "0.4" : "1";
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -2138,6 +2375,46 @@ function buildForm(person) {
   const tcText  = lastTC > 1
     ? "¢" + lastTC.toLocaleString() + " por $1"
     : "Registra una deuda USD primero";
+
+  const usaTarjetas = TARJETAS_HABILITADAS_PARA.includes(person);
+
+  // Bloque de forma de pago: selector de tarjetas (habilitado) o switch (resto)
+  let pagoBlock;
+  if (usaTarjetas) {
+    const misTarjetas = tarjetasDe(person);
+    const tjOpts = misTarjetas.map(t =>
+      `<option value="${t.id}">💳 ${t.nombre} (corte ${t.diaCorte})</option>`
+    ).join("");
+    pagoBlock = `
+        <div class="fg span2">
+          <label>Forma de pago</label>
+          <select id="inp-pago-p${person}" onchange="updateCorteUI(${person})">
+            <option value="efectivo">💵 Efectivo / débito</option>
+            ${tjOpts}
+          </select>
+        </div>
+        <div class="fg span2" id="corte-info-p${person}" style="display:none">
+          <label>Corte de la compra</label>
+          <input type="text" id="corte-txt-p${person}" disabled
+                 style="opacity:0.75;cursor:not-allowed;font-size:0.75rem;background:var(--card2);color:var(--sh)"/>
+        </div>`;
+  } else {
+    pagoBlock = `
+        <div class="fg">
+          <label>Forma de pago</label>
+          <div class="switch-row" id="sw-row-p${person}"
+               onclick="document.getElementById('sw-card-p${person}').click()">
+            <span class="sw-lbl" id="sw-lbl-p${person}">💵 Sin tarjeta — solo categoría</span>
+            <div class="switch-wrap">
+              <input type="checkbox" id="sw-card-p${person}"
+                     onchange="updateSwitchUI(${person})"
+                     onclick="event.stopPropagation()"/>
+              <div class="switch-track"></div>
+            </div>
+          </div>
+        </div>`;
+  }
+
   return `
     <div class="add-form-wrap">
       <p class="add-form-title">Nuevo gasto — ${NAMES[person]}</p>
@@ -2165,7 +2442,8 @@ function buildForm(person) {
         </div>
         <div class="fg">
           <label>Fecha</label>
-          <input type="date" id="inp-date-p${person}" value="${today()}"/>
+          <input type="date" id="inp-date-p${person}" value="${today()}"
+                 onchange="updateCorteUI(${person})"/>
         </div>
         <div class="fg">
           <label>Categoría</label>
@@ -2178,23 +2456,35 @@ function buildForm(person) {
             <option value="shared">Compartido (÷ 2)</option>
           </select>
         </div>
-        <div class="fg">
-          <label>Forma de pago</label>
-          <div class="switch-row" id="sw-row-p${person}"
-               onclick="document.getElementById('sw-card-p${person}').click()">
-            <span class="sw-lbl" id="sw-lbl-p${person}">💵 Sin tarjeta — solo categoría</span>
-            <div class="switch-wrap">
-              <input type="checkbox" id="sw-card-p${person}"
-                     onchange="updateSwitchUI(${person})"
-                     onclick="event.stopPropagation()"/>
-              <div class="switch-track"></div>
-            </div>
-          </div>
-        </div>
+        ${pagoBlock}
       </div>
       <button class="btn-add" onclick="addExpense(${person})">+ Agregar gasto</button>
     </div>
   `;
+}
+
+/**
+ * Muestra/actualiza la previsualización del corte según la tarjeta
+ * y la fecha seleccionadas (solo para usuarios con tarjetas).
+ */
+function updateCorteUI(person) {
+  const pagoEl  = document.getElementById(`inp-pago-p${person}`);
+  const infoEl  = document.getElementById(`corte-info-p${person}`);
+  const txtEl   = document.getElementById(`corte-txt-p${person}`);
+  if (!pagoEl || !infoEl || !txtEl) return;
+
+  const val = pagoEl.value;
+  if (val === "efectivo") {
+    infoEl.style.display = "none";
+    return;
+  }
+  const tj = getTarjeta(val);
+  if (!tj) { infoEl.style.display = "none"; return; }
+
+  const fecha = document.getElementById(`inp-date-p${person}`)?.value || today();
+  const mesCorte = calcularMesCorte(fecha, tj.diaCorte);
+  txtEl.value = "Caerá en el corte de " + etiquetaCorte(mesCorte);
+  infoEl.style.display = "flex";
 }
 function updateMonedaUI(person) {
   const moneda = document.getElementById(`inp-moneda-p${person}`)?.value || "CRC";
@@ -2275,9 +2565,19 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
       const whoLbl   = isShared ? "compartido" : e.type==="p1" ? "Marvin" : "Karol";
       const qClass   = q===1 ? "t-q1" : "t-q2";
       const qLbl     = q===1 ? "Q1·1-15" : "Q2·16-31";
-      const payTag   = e.onCard
-        ? `<span class="tag t-card">💳 tarjeta</span>`
-        : `<span style="font-size:0.57rem;color:var(--muted)">efectivo</span>`;
+      // Forma de pago: si tiene tarjeta identificada, muestra su nombre + corte
+      let payTag;
+      if (e.tarjetaId) {
+        const tj = getTarjeta(e.tarjetaId);
+        const nom = tj ? tj.nombre : "tarjeta";
+        const col = tj ? tj.color : "#fb923c";
+        const corteLbl = e.mesCorte ? `<span class="corte-badge">corte ${etiquetaCorte(e.mesCorte)}</span>` : "";
+        payTag = `<span class="tarjeta-badge" style="background:${col}22;color:${col};border:1px solid ${col}55">💳 ${nom}</span>${corteLbl}`;
+      } else if (e.onCard) {
+        payTag = `<span class="tag t-card">💳 tarjeta</span>`;
+      } else {
+        payTag = `<span style="font-size:0.57rem;color:var(--muted)">efectivo</span>`;
+      }
 
       let amtDisplay;
       if (isUSD) {
@@ -2350,12 +2650,13 @@ function renderAll() {
 }
 
 initMonthSelects();
-Promise.all([loadExpenses(), loadBudgets(), loadSavings(), loadDebts()])
+Promise.all([loadExpenses(), loadBudgets(), loadSavings(), loadDebts(), loadTarjetas()])
   .then(() => {
     subscribeRealtime();
     subscribeBudgetRealtime();
     subscribeSavingsRealtime();
     subscribeDebtsRealtime();
+    subscribeTarjetasRealtime();
     renderAll();
   });
 </script>
