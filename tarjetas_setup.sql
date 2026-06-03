@@ -77,6 +77,19 @@ WHERE NOT EXISTS (
   SELECT 1 FROM tarjetas WHERE person = 1 AND nombre = 'Scotiabank'
 );
 
+-- Tarjetas de Karol (person = 2)
+INSERT INTO tarjetas (person, nombre, dia_corte, color)
+SELECT 2, 'BAC Economía', 30, '#ff6b9d'
+WHERE NOT EXISTS (
+  SELECT 1 FROM tarjetas WHERE person = 2 AND nombre = 'BAC Economía'
+);
+
+INSERT INTO tarjetas (person, nombre, dia_corte, color)
+SELECT 2, 'BAC Cash Back', 15, '#a78bfa'
+WHERE NOT EXISTS (
+  SELECT 1 FROM tarjetas WHERE person = 2 AND nombre = 'BAC Cash Back'
+);
+
 
 -- ───────────────────────────────────────────────────────────────
 -- 4. VERIFICACIÓN
