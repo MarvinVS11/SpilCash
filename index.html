@@ -891,8 +891,19 @@ function initMonthSelects() {
 /* ─────────────────────────────────────────────────────────────
    3.4  UTILIDADES DE FECHA Y PERÍODO
 ───────────────────────────────────────────────────────────── */
-const today        = () => new Date().toISOString().slice(0, 10);
-const currentMonth = () => new Date().toISOString().slice(0, 7);
+// Fecha local en formato YYYY-MM-DD (sin desfase de zona horaria UTC)
+const today = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+// Mes local en formato YYYY-MM
+const currentMonth = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
 
 function quincena(dateStr) {
   return parseInt(dateStr.split("-")[2], 10) <= 15 ? 1 : 2;
