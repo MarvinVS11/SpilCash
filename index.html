@@ -1730,23 +1730,24 @@ async function deleteExpense(id) {
 
 /**
  * Activa/desactiva la edición inline de una fila.
- * Reemplaza el contenido de cada celda por un input/select editable.
+ * Recibe el elemento del botón (btnEl) para localizar SU fila exacta,
+ * evitando problemas con IDs duplicados en el DOM (mismo gasto en
+ * vista pública y privada). Los campos se buscan dentro de la fila.
  */
-function editExpense(id) {
+function editExpense(id, btnEl) {
   const e = expenses.find(ex => ex.id === id);
   if (!e) return;
 
-  const row = document.getElementById("exp-row-" + id);
+  // Subir desde el botón hasta su <tr> contenedor
+  const row = btnEl ? btnEl.closest("tr") : document.getElementById("exp-row-" + id);
   if (!row) return;
 
-  // Toggle: si ya está en modo edición, cancelar
+  // Toggle: si ya está en edición, cancelar
   if (row.classList.contains("row-editing")) {
-    closeEditExpense(id);
+    closeEditExpense(row);
     return;
   }
   row.classList.add("row-editing");
-
-  // Guardar HTML original para poder cancelar
   row.dataset.origHtml = row.innerHTML;
 
   const catOpts = CATEGORIES.map(cat =>
@@ -1759,45 +1760,46 @@ function editExpense(id) {
                 + "<option value='USD'" + (isUSD  ? " selected" : "") + ">$ USD</option>";
   const typOpts = "<option value='individual'" + (e.type !== "shared" ? " selected" : "") + ">Ind.</option>"
                 + "<option value='shared'"     + (e.type === "shared" ? " selected" : "") + ">Comp.</option>";
+  const q1       = e.date && parseInt(e.date.split('-')[2]) <= 15;
 
-  // Reemplazar cada celda con su versión editable
+  // Campos identificados por CLASE (no id) — únicos dentro de esta fila
   row.innerHTML =
-    // Col 1: descripción + badge moneda
-    "<td><input class='cell-input' id='ed-desc-" + id + "' value='" + e.desc.replace(/'/g,"&#39;") + "'/></td>"
-    // Col 2: monto
-    + "<td><input class='cell-input' id='ed-amt-" + id + "' type='number' value='" + e.amount + "' min='1' step='100' style='width:80px'/>"
-    + "<br><select class='cell-input' id='ed-mon-" + id + "' style='width:80px;margin-top:3px'>" + monOpts + "</select></td>"
-    // Col 3: fecha
-    + "<td class='col-dt'><input class='cell-input' id='ed-date-" + id + "' type='date' value='" + e.date + "'/></td>"
-    // Col 4: qna (solo lectura)
-    + "<td class='col-q'><span class='tag " + (e.date && parseInt(e.date.split('-')[2])<=15 ? 't-q1' : 't-q2') + "'>"
-    + (e.date && parseInt(e.date.split('-')[2])<=15 ? 'Q1' : 'Q2') + "</span></td>"
-    // Col 5: tipo
-    + "<td><select class='cell-input' id='ed-type-" + id + "' style='width:70px'>" + typOpts + "</select></td>"
-    // Col 6: categoría (pago — no editable en esta versión)
-    + "<td><select class='cell-input' id='ed-cat-" + id + "'>" + catOpts + "</select></td>"
-    // Col 7: acciones guardar/cancelar
+    "<td><input class='cell-input ed-desc' value='" + e.desc.replace(/'/g,"&#39;") + "'/></td>"
+    + "<td><input class='cell-input ed-amt' type='number' value='" + e.amount + "' min='1' step='100' style='width:80px'/>"
+    + "<br><select class='cell-input ed-mon' style='width:80px;margin-top:3px'>" + monOpts + "</select></td>"
+    + "<td class='col-dt'><input class='cell-input ed-date' type='date' value='" + e.date + "'/></td>"
+    + "<td class='col-q'><span class='tag " + (q1 ? 't-q1' : 't-q2') + "'>" + (q1 ? 'Q1' : 'Q2') + "</span></td>"
+    + "<td><select class='cell-input ed-type' style='width:70px'>" + typOpts + "</select></td>"
+    + "<td><select class='cell-input ed-cat'>" + catOpts + "</select></td>"
     + "<td style='white-space:nowrap'>"
-    + "<button class='btn-save-edit' onclick='saveEditExpense(" + id + "," + e.person + ")'>✓</button> "
-    + "<button class='btn-cancel-edit' onclick='closeEditExpense(" + id + ")'>✕</button>"
+    + "<button class='btn-save-edit' onclick='saveEditExpense(" + id + "," + e.person + ", this)'>✓</button> "
+    + "<button class='btn-cancel-edit' onclick='closeEditExpense(this)'>✕</button>"
     + "</td>";
 }
 
-function closeEditExpense(id) {
-  const row = document.getElementById("exp-row-" + id);
+/**
+ * Cierra la edición. Acepta el <tr> directamente o un elemento hijo
+ * (como el botón cancelar) desde el cual sube al <tr>.
+ */
+function closeEditExpense(ref) {
+  const row = ref && ref.closest ? (ref.matches("tr") ? ref : ref.closest("tr")) : ref;
   if (!row) return;
   if (row.dataset.origHtml) row.innerHTML = row.dataset.origHtml;
   row.classList.remove("row-editing");
   delete row.dataset.origHtml;
 }
 
-async function saveEditExpense(id, person) {
-  const desc    = document.getElementById("ed-desc-"  + id)?.value.trim();
-  const amount  = parseFloat(document.getElementById("ed-amt-"  + id)?.value);
-  const moneda  = document.getElementById("ed-mon-"   + id)?.value || "CRC";
-  const date    = document.getElementById("ed-date-"  + id)?.value;
-  const typeVal = document.getElementById("ed-type-"  + id)?.value;
-  const catId   = document.getElementById("ed-cat-"   + id)?.value;
+async function saveEditExpense(id, person, btnEl) {
+  // Localizar la fila desde el botón guardar
+  const row = btnEl ? btnEl.closest("tr") : document.getElementById("exp-row-" + id);
+  if (!row) return;
+
+  const desc    = row.querySelector(".ed-desc")?.value.trim();
+  const amount  = parseFloat(row.querySelector(".ed-amt")?.value);
+  const moneda  = row.querySelector(".ed-mon")?.value || "CRC";
+  const date    = row.querySelector(".ed-date")?.value;
+  const typeVal = row.querySelector(".ed-type")?.value;
+  const catId   = row.querySelector(".ed-cat")?.value;
 
   if (!desc)                     { showToast("Ingresa una descripci\u00f3n", "err"); return; }
   if (isNaN(amount)||amount <= 0){ showToast("Ingresa un monto v\u00e1lido",  "err"); return; }
@@ -1806,8 +1808,7 @@ async function saveEditExpense(id, person) {
   const amountCRC  = moneda === "USD" ? amount * tipoCambio : amount;
   const type       = typeVal === "shared" ? "shared" : "p" + person;
 
-  const saveBtn = document.querySelector("#exp-row-" + id + " .btn-save-edit");
-  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "..."; }
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = "..."; }
 
   try {
     const { error } = await db.from(TABLE).update({
@@ -1818,14 +1819,14 @@ async function saveEditExpense(id, person) {
 
     if (error) {
       showToast("Error: " + (error.message || "al guardar"), "err");
-      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "\u2713"; }
+      if (btnEl) { btnEl.disabled = false; btnEl.textContent = "\u2713"; }
     } else {
       showToast("\u2713 Gasto actualizado", "ok");
-      // El realtime actualizará la fila automáticamente
+      // El realtime re-renderiza la lista automáticamente
     }
   } catch (err) {
     showToast("Error: " + (err.message || String(err)), "err");
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "\u2713"; }
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = "\u2713"; }
   }
 }
 
@@ -2297,12 +2298,12 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
         : `<span class="currency-badge crc">CRC</span>`;
       const del = showDelete
         ? `<td style="white-space:nowrap">
-            <button class="btn-edit" onclick="editExpense(${e.id})" title="Editar">✏️</button>
+            <button class="btn-edit" onclick="editExpense(${e.id}, this)" title="Editar">✏️</button>
             <button class="btn-del"  onclick="deleteExpense(${e.id})" title="Eliminar">✕</button>
            </td>`
         : "";
 
-      return `<tr id="exp-row-${e.id}">
+      return `<tr id="exp-row-${e.id}" data-eid="${e.id}">
           <td>${e.desc} ${badge}</td>
           <td>${amtDisplay}</td>
           <td class="col-dt">${e.date}</td>
