@@ -1184,16 +1184,16 @@ function renderTarjetas(person) {
   list.innerHTML = "";
   mis.forEach(t => {
     // Gastos cargados a esta tarjeta
-    const gastosT   = expenses.filter(e => e.tarjetaId === t.id);
-    const totalCRC  = gastosT
+    const gastosT  = expenses.filter(e => e.tarjetaId === t.id);
+    const totalCRC = gastosT
       .filter(e => e.moneda !== "USD")
       .reduce((s, e) => s + (e.amountCRC || e.amount), 0);
-    const totalUSD  = gastosT
+    const totalUSD = gastosT
       .filter(e => e.moneda === "USD")
       .reduce((s, e) => s + e.amount, 0);
-    const totalCnt  = gastosT.length;
+    const totalCnt = gastosT.length;
 
-    // Líneas de totales — solo mostrar si hay gastos
+    // Totales gastados
     let totalesHTML = "";
     if (totalCnt === 0) {
       totalesHTML = "<div style='font-size:0.78rem;color:var(--muted);margin-top:6px'>Sin gastos registrados con esta tarjeta</div>";
@@ -1212,6 +1212,15 @@ function renderTarjetas(person) {
       totalesHTML += "</div>";
     }
 
+    // Botón pagar — siempre visible, deshabilitado si no hay gastos
+    const hayGastos = totalCnt > 0;
+    const pagarBtn = "<div style='margin-top:10px'>"
+      + "<button class='btn-add' "
+      + "style='background:" + (hayGastos ? "var(--saving)" : "var(--card2)") + ";color:" + (hayGastos ? "#0d1a16" : "var(--muted)") + ";font-size:0.75rem;padding:6px 14px;cursor:" + (hayGastos ? "pointer" : "not-allowed") + "' "
+      + (hayGastos ? "onclick='pagarTarjeta(" + t.id + ", \"" + t.nombre + "\")'" : "disabled")
+      + ">✓ Pagar tarjeta</button>"
+      + "</div>";
+
     const card = document.createElement("div");
     card.className = "item-card";
     card.style.borderLeft = "3px solid " + t.color;
@@ -1221,9 +1230,51 @@ function renderTarjetas(person) {
       + "<button class='item-card-del' onclick='deleteTarjeta(" + t.id + ")' title='Eliminar'>✕</button>"
       + "</div>"
       + "<div style='font-size:0.78rem;color:var(--muted)'>Corte el día <strong style='color:" + t.color + "'>" + t.diaCorte + "</strong> de cada mes</div>"
-      + totalesHTML;
+      + totalesHTML
+      + pagarBtn;
     list.appendChild(card);
   });
+}
+
+/**
+ * Pagar tarjeta: pregunta confirmación y luego limpia tarjeta_id y mes_corte
+ * de todos los gastos asociados a esa tarjeta, dejando el contador en 0.
+ * Los gastos no se borran — solo se desvinculan de la tarjeta (quedan como
+ * "pagados" y siguen contando en categorías y saldos).
+ */
+async function pagarTarjeta(tarjetaId, nombre) {
+  const gastosT = expenses.filter(e => e.tarjetaId === tarjetaId);
+  if (gastosT.length === 0) return;
+
+  // Construir resumen para el mensaje de confirmación
+  const totalCRC = gastosT.filter(e => e.moneda !== "USD").reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+  const totalUSD = gastosT.filter(e => e.moneda === "USD").reduce((s,e) => s+e.amount, 0);
+  let resumen = gastosT.length + " compra" + (gastosT.length !== 1 ? "s" : "");
+  if (totalCRC > 0) resumen += " · " + fmt(totalCRC);
+  if (totalUSD > 0) resumen += " · " + fmtUSD(totalUSD);
+
+  const confirmado = confirm(
+    "\u00bfPagar tarjeta " + nombre + "?\n\n"
+    + resumen + "\n\n"
+    + "Los gastos quedar\u00e1n registrados en sus categor\u00edas pero se desvinculan de la tarjeta. "
+    + "El contador volver\u00e1 a 0."
+  );
+  if (!confirmado) return;
+
+  // Desvincular todos los gastos de esta tarjeta en Supabase
+  const ids = gastosT.map(e => e.id);
+  try {
+    const { error } = await db.from(TABLE)
+      .update({ tarjeta_id: null, mes_corte: null })
+      .in("id", ids);
+    if (error) {
+      showToast("Error al pagar: " + (error.message || ""), "err");
+    } else {
+      showToast("\u2713 Tarjeta " + nombre + " pagada — contador en 0", "ok");
+    }
+  } catch(e) {
+    showToast("Error: " + (e.message || String(e)), "err");
+  }
 }
 
 function getLastTipoCambio(person) {
