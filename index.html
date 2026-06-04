@@ -1217,7 +1217,7 @@ function renderTarjetas(person) {
     const pagarBtn = "<div style='margin-top:10px'>"
       + "<button class='btn-add' "
       + "style='background:" + (hayGastos ? "var(--saving)" : "var(--card2)") + ";color:" + (hayGastos ? "#0d1a16" : "var(--muted)") + ";font-size:0.75rem;padding:6px 14px;cursor:" + (hayGastos ? "pointer" : "not-allowed") + "' "
-      + (hayGastos ? "onclick='pagarTarjeta(" + t.id + ", \"" + t.nombre + "\")'" : "disabled")
+      + (hayGastos ? "onclick='pagarTarjeta(" + t.id + ", \"" + t.nombre + "\", " + person + ")'" : "disabled")
       + ">✓ Pagar tarjeta</button>"
       + "</div>";
 
@@ -1237,40 +1237,113 @@ function renderTarjetas(person) {
 }
 
 /**
- * Pagar tarjeta: pregunta confirmación y luego limpia tarjeta_id y mes_corte
- * de todos los gastos asociados a esa tarjeta, dejando el contador en 0.
- * Los gastos no se borran — solo se desvinculan de la tarjeta (quedan como
- * "pagados" y siguen contando en categorías y saldos).
+ * Muestra un panel de selección de corte para pagar.
+ * Lista los cortes únicos (mes_corte) de los gastos de esa tarjeta.
+ * El usuario elige cuál corte pagar y confirma.
+ * Solo se desvinculan los gastos del corte seleccionado —
+ * los de otros cortes (futuros o anteriores) quedan intactos.
  */
-async function pagarTarjeta(tarjetaId, nombre) {
-  const gastosT = expenses.filter(e => e.tarjetaId === tarjetaId);
-  if (gastosT.length === 0) return;
+function pagarTarjeta(tarjetaId, nombre, person) {
+  const gastosT = expenses.filter(e => e.tarjetaId === tarjetaId && e.mesCorte);
+  if (gastosT.length === 0) {
+    showToast("Sin gastos con corte registrado en esta tarjeta", "err");
+    return;
+  }
 
-  // Construir resumen para el mensaje de confirmación
-  const totalCRC = gastosT.filter(e => e.moneda !== "USD").reduce((s,e) => s+(e.amountCRC||e.amount), 0);
-  const totalUSD = gastosT.filter(e => e.moneda === "USD").reduce((s,e) => s+e.amount, 0);
-  let resumen = gastosT.length + " compra" + (gastosT.length !== 1 ? "s" : "");
-  if (totalCRC > 0) resumen += " · " + fmt(totalCRC);
-  if (totalUSD > 0) resumen += " · " + fmtUSD(totalUSD);
+  // Obtener cortes únicos ordenados
+  const cortesUnicos = [...new Set(gastosT.map(e => e.mesCorte))].sort();
 
-  const confirmado = confirm(
-    "\u00bfPagar tarjeta " + nombre + "?\n\n"
-    + resumen + "\n\n"
-    + "Los gastos quedar\u00e1n registrados en sus categor\u00edas pero se desvinculan de la tarjeta. "
-    + "El contador volver\u00e1 a 0."
+  // Si ya hay un panel abierto para esta tarjeta, cerrarlo (toggle)
+  const panelId = "pagar-panel-" + tarjetaId;
+  const existing = document.getElementById(panelId);
+  if (existing) { existing.remove(); return; }
+
+  // Construir opciones de corte con resumen de montos
+  const optsHTML = cortesUnicos.map(mc => {
+    const gastosCorte = gastosT.filter(e => e.mesCorte === mc);
+    const crc = gastosCorte.filter(e => e.moneda !== "USD").reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+    const usd = gastosCorte.filter(e => e.moneda === "USD").reduce((s,e) => s+e.amount, 0);
+    let resumen = gastosCorte.length + " compra" + (gastosCorte.length !== 1 ? "s" : "");
+    if (crc > 0) resumen += " · " + fmt(crc);
+    if (usd > 0) resumen += " · " + fmtUSD(usd);
+    return "<option value='" + mc + "'>" + etiquetaCorte(mc) + " — " + resumen + "</option>";
+  }).join("");
+
+  // Insertar panel debajo de la tarjeta
+  const listEl  = document.getElementById("tarjeta-list-" + person);
+  const cards   = listEl ? listEl.querySelectorAll(".item-card") : [];
+  // Buscar la tarjeta correcta por botón
+  let anchorEl = listEl;
+
+  const panel = document.createElement("div");
+  panel.id = panelId;
+  panel.style.cssText = "background:var(--surface);border:1.5px solid var(--a1);border-radius:10px;padding:14px 16px;margin-top:8px";
+  panel.innerHTML =
+    "<div style='font-size:0.78rem;color:var(--text);margin-bottom:10px;font-weight:700'>¿Qué corte deseas pagar?</div>"
+    + "<div style='font-size:0.72rem;color:var(--muted);margin-bottom:10px'>"
+    + "Solo se liberarán los gastos del corte seleccionado.<br>"
+    + "Los demás cortes quedan intactos.</div>"
+    + "<div class='fg' style='margin-bottom:12px'>"
+    + "<label>Corte a pagar</label>"
+    + "<select id='corte-sel-" + tarjetaId + "' class='cell-input'>" + optsHTML + "</select>"
+    + "</div>"
+    + "<div style='display:flex;gap:8px'>"
+    + "<button class='btn-save-edit' style='background:var(--saving);color:#0d1a16' "
+    + "onclick='confirmarPagoCorte(" + tarjetaId + ", \"" + nombre + "\")'>✓ Pagar este corte</button>"
+    + "<button class='btn-cancel-edit' onclick='document.getElementById(\"" + panelId + "\").remove()'>Cancelar</button>"
+    + "</div>";
+
+  // Insertar después de la tarjeta que contiene el botón
+  const tarjetaCards = listEl ? listEl.querySelectorAll(".item-card") : [];
+  let inserted = false;
+  tarjetaCards.forEach(card => {
+    const btn = card.querySelector("button[onclick*='pagarTarjeta(" + tarjetaId + "']");
+    if (btn && !inserted) {
+      card.insertAdjacentElement("afterend", panel);
+      inserted = true;
+    }
+  });
+  if (!inserted && listEl) listEl.appendChild(panel);
+}
+
+/**
+ * Confirma y ejecuta el pago del corte seleccionado.
+ * Solo desvincula gastos con ese mes_corte exacto.
+ */
+async function confirmarPagoCorte(tarjetaId, nombre) {
+  const sel = document.getElementById("corte-sel-" + tarjetaId);
+  if (!sel) return;
+  const mesCorteSeleccionado = sel.value;
+  const etiqueta = etiquetaCorte(mesCorteSeleccionado);
+
+  // Gastos de ese corte específico
+  const gastosCorte = expenses.filter(e => e.tarjetaId === tarjetaId && e.mesCorte === mesCorteSeleccionado);
+  if (gastosCorte.length === 0) { showToast("Sin gastos para ese corte", "err"); return; }
+
+  const crc = gastosCorte.filter(e => e.moneda !== "USD").reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+  const usd = gastosCorte.filter(e => e.moneda === "USD").reduce((s,e) => s+e.amount, 0);
+  let resumen = gastosCorte.length + " compra" + (gastosCorte.length !== 1 ? "s" : "");
+  if (crc > 0) resumen += " · " + fmt(crc);
+  if (usd > 0) resumen += " · " + fmtUSD(usd);
+
+  const ok = confirm(
+    "\u00bfConfirmar pago del corte de " + etiqueta + "?\n\n"
+    + nombre + " · " + resumen + "\n\n"
+    + "Estos gastos quedar\u00e1n en sus categor\u00edas pero se liberar\u00e1n de la tarjeta."
   );
-  if (!confirmado) return;
+  if (!ok) return;
 
-  // Desvincular todos los gastos de esta tarjeta en Supabase
-  const ids = gastosT.map(e => e.id);
+  const ids = gastosCorte.map(e => e.id);
   try {
     const { error } = await db.from(TABLE)
       .update({ tarjeta_id: null, mes_corte: null })
       .in("id", ids);
     if (error) {
-      showToast("Error al pagar: " + (error.message || ""), "err");
+      showToast("Error: " + (error.message || ""), "err");
     } else {
-      showToast("\u2713 Tarjeta " + nombre + " pagada — contador en 0", "ok");
+      showToast("\u2713 Corte " + etiqueta + " de " + nombre + " pagado", "ok");
+      const panel = document.getElementById("pagar-panel-" + tarjetaId);
+      if (panel) panel.remove();
     }
   } catch(e) {
     showToast("Error: " + (e.message || String(e)), "err");
