@@ -1183,6 +1183,35 @@ function renderTarjetas(person) {
   }
   list.innerHTML = "";
   mis.forEach(t => {
+    // Gastos cargados a esta tarjeta
+    const gastosT   = expenses.filter(e => e.tarjetaId === t.id);
+    const totalCRC  = gastosT
+      .filter(e => e.moneda !== "USD")
+      .reduce((s, e) => s + (e.amountCRC || e.amount), 0);
+    const totalUSD  = gastosT
+      .filter(e => e.moneda === "USD")
+      .reduce((s, e) => s + e.amount, 0);
+    const totalCnt  = gastosT.length;
+
+    // Líneas de totales — solo mostrar si hay gastos
+    let totalesHTML = "";
+    if (totalCnt === 0) {
+      totalesHTML = "<div style='font-size:0.70rem;color:var(--muted);margin-top:6px'>Sin gastos registrados con esta tarjeta</div>";
+    } else {
+      totalesHTML = "<div style='display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;align-items:center'>";
+      if (totalCRC > 0)
+        totalesHTML += "<div style='font-size:0.75rem'>"
+          + "<span style='color:var(--muted);font-size:0.62rem;text-transform:uppercase;letter-spacing:1px'>Gastado ¢ </span>"
+          + "<strong style='color:var(--sh)'>" + fmt(totalCRC) + "</strong></div>";
+      if (totalUSD > 0)
+        totalesHTML += "<div style='font-size:0.75rem'>"
+          + "<span style='color:var(--muted);font-size:0.62rem;text-transform:uppercase;letter-spacing:1px'>Gastado $ </span>"
+          + "<strong style='color:#60a5fa'>" + fmtUSD(totalUSD) + "</strong></div>";
+      totalesHTML += "<div style='font-size:0.62rem;color:var(--muted);margin-left:auto'>"
+        + totalCnt + " compra" + (totalCnt !== 1 ? "s" : "") + "</div>";
+      totalesHTML += "</div>";
+    }
+
     const card = document.createElement("div");
     card.className = "item-card";
     card.style.borderLeft = "3px solid " + t.color;
@@ -1191,7 +1220,8 @@ function renderTarjetas(person) {
       + "<span class='item-card-title'>💳 " + t.nombre + "</span>"
       + "<button class='item-card-del' onclick='deleteTarjeta(" + t.id + ")' title='Eliminar'>✕</button>"
       + "</div>"
-      + "<div style='font-size:0.72rem;color:var(--muted)'>Corte el día <strong style='color:" + t.color + "'>" + t.diaCorte + "</strong> de cada mes</div>";
+      + "<div style='font-size:0.70rem;color:var(--muted)'>Corte el día <strong style='color:" + t.color + "'>" + t.diaCorte + "</strong> de cada mes</div>"
+      + totalesHTML;
     list.appendChild(card);
   });
 }
