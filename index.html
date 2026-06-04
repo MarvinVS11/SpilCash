@@ -2248,11 +2248,19 @@ function renderPublic() {
 
   // Acordeón de compartidos
   const container = document.getElementById("pub-cats");
+  // Guardar categorías abiertas antes de reconstruir
+  const openPub = new Set();
+  container.querySelectorAll(".cat-block.open").forEach(function(el) {
+    if (el.dataset.catId) openPub.add(el.dataset.catId);
+  });
   container.innerHTML = "";
   CATEGORIES.forEach(cat => {
     const catExp = filtered.filter(e => e.catId === cat.id && e.type === "shared");
     const catTot = catExp.reduce((s,e) => s+e.amount, 0);
-    container.appendChild(buildAccordion(cat, catExp, catTot, false));
+    const block  = buildAccordion(cat, catExp, catTot, false);
+    block.dataset.catId = cat.id;
+    if (openPub.has(cat.id)) block.classList.add("open");
+    container.appendChild(block);
   });
 }
 
@@ -2392,6 +2400,12 @@ function renderPrivate(person) {
   var container = document.getElementById("priv-cats-p"+person);
   if (container) {
     container.innerHTML = "";
+    // Guardar qué categorías están abiertas antes de reconstruir
+    const openCats = new Set();
+    container.querySelectorAll(".cat-block.open").forEach(function(el) {
+      if (el.dataset.catId) openCats.add(el.dataset.catId);
+    });
+
     // En modo corte el listado se filtra por mes_corte; en calendario por fecha
     var listado = filterByVista(expenses, person, month, privQ[person])
                     .filter(e => e.person === person);
@@ -2399,7 +2413,11 @@ function renderPrivate(person) {
       var catExp = listado.filter(e => e.catId === cat.id);
       var catTot = catExp.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
       try {
-        container.appendChild(buildAccordion(cat, catExp, catTot, true));
+        var block = buildAccordion(cat, catExp, catTot, true);
+        block.dataset.catId = cat.id;
+        // Restaurar estado abierto si estaba abierto antes
+        if (openCats.has(cat.id)) block.classList.add("open");
+        container.appendChild(block);
       } catch(err) {
         console.warn("buildAccordion " + cat.id + ":", err.message);
       }
