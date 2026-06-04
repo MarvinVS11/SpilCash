@@ -315,12 +315,12 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
 }
 .mod-header-title {
-  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 3px; color: var(--muted);
+  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 3px; color: var(--muted);
 }
 .btn-add-item {
   background: transparent; border: 1.5px solid var(--border); color: var(--muted);
   padding: 5px 12px; border-radius: 6px; cursor: pointer; font-family: inherit;
-  font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; transition: var(--tr);
+  font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; transition: var(--tr);
 }
 .btn-add-item:hover { border-color: var(--sh); color: var(--sh); }
 
@@ -342,7 +342,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .currency-badge.usd { background: rgba(96,165,250,0.18); color: #60a5fa;     }
 
 .tc-note {
-  font-size: 0.62rem; color: var(--muted); margin-top: 4px; text-align: right;
+  font-size: 0.72rem; color: var(--muted); margin-top: 4px; text-align: right;
 }
 .item-card.debt-card   { border-left: 3px solid var(--debt); }
 
@@ -351,11 +351,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   gap: 8px; margin-bottom: 10px;
 }
 .item-card-title {
-  font-size: 0.82rem; font-weight: 700; color: var(--text); flex: 1;
+  font-size: 0.92rem; font-weight: 700; color: var(--text); flex: 1;
 }
 .item-card-del {
   background: none; border: none; color: var(--muted); cursor: pointer;
-  font-size: 0.75rem; padding: 2px 5px; border-radius: 4px;
+  font-size: 0.82rem; padding: 2px 5px; border-radius: 4px;
   transition: color var(--tr), background var(--tr); flex-shrink: 0;
 }
 .item-card-del:hover { color: var(--danger); background: rgba(255,77,109,0.12); }
@@ -365,11 +365,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 }
 .item-amt-block { text-align: center; }
 .item-amt-lbl {
-  font-size: 0.56rem; letter-spacing: 1.5px; text-transform: uppercase;
+  font-size: 0.68rem; letter-spacing: 1.5px; text-transform: uppercase;
   color: var(--muted); display: block; margin-bottom: 3px;
 }
 .item-amt-val {
-  font-size: 0.95rem; font-weight: 700;
+  font-size: 1.05rem; font-weight: 700;
 }
 .item-amt-val.goal  { color: var(--income); }
 .item-amt-val.done  { color: var(--saving); }
@@ -402,7 +402,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .cuota-summary {
   background: var(--surface); border: 1.5px solid var(--border);
   border-radius: var(--r); padding: 10px 14px; margin-bottom: 14px;
-  font-size: 0.75rem;
+  font-size: 0.84rem;
 }
 .cuota-row {
   display: flex; justify-content: space-between; align-items: center;
@@ -1196,18 +1196,18 @@ function renderTarjetas(person) {
     // Líneas de totales — solo mostrar si hay gastos
     let totalesHTML = "";
     if (totalCnt === 0) {
-      totalesHTML = "<div style='font-size:0.70rem;color:var(--muted);margin-top:6px'>Sin gastos registrados con esta tarjeta</div>";
+      totalesHTML = "<div style='font-size:0.78rem;color:var(--muted);margin-top:6px'>Sin gastos registrados con esta tarjeta</div>";
     } else {
       totalesHTML = "<div style='display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;align-items:center'>";
       if (totalCRC > 0)
-        totalesHTML += "<div style='font-size:0.75rem'>"
+        totalesHTML += "<div style='font-size:0.82rem'>"
           + "<span style='color:var(--muted);font-size:0.62rem;text-transform:uppercase;letter-spacing:1px'>Gastado ¢ </span>"
           + "<strong style='color:var(--sh)'>" + fmt(totalCRC) + "</strong></div>";
       if (totalUSD > 0)
-        totalesHTML += "<div style='font-size:0.75rem'>"
+        totalesHTML += "<div style='font-size:0.82rem'>"
           + "<span style='color:var(--muted);font-size:0.62rem;text-transform:uppercase;letter-spacing:1px'>Gastado $ </span>"
           + "<strong style='color:#60a5fa'>" + fmtUSD(totalUSD) + "</strong></div>";
-      totalesHTML += "<div style='font-size:0.62rem;color:var(--muted);margin-left:auto'>"
+      totalesHTML += "<div style='font-size:0.70rem;color:var(--muted);margin-left:auto'>"
         + totalCnt + " compra" + (totalCnt !== 1 ? "s" : "") + "</div>";
       totalesHTML += "</div>";
     }
@@ -1220,7 +1220,7 @@ function renderTarjetas(person) {
       + "<span class='item-card-title'>💳 " + t.nombre + "</span>"
       + "<button class='item-card-del' onclick='deleteTarjeta(" + t.id + ")' title='Eliminar'>✕</button>"
       + "</div>"
-      + "<div style='font-size:0.70rem;color:var(--muted)'>Corte el día <strong style='color:" + t.color + "'>" + t.diaCorte + "</strong> de cada mes</div>"
+      + "<div style='font-size:0.78rem;color:var(--muted)'>Corte el día <strong style='color:" + t.color + "'>" + t.diaCorte + "</strong> de cada mes</div>"
       + totalesHTML;
     list.appendChild(card);
   });
