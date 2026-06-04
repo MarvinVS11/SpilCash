@@ -1290,7 +1290,7 @@ function pagarTarjeta(tarjetaId, nombre, person) {
     + "<div style='display:flex;gap:8px'>"
     + "<button class='btn-save-edit' style='background:var(--saving);color:#0d1a16' "
     + "onclick='confirmarPagoCorte(" + tarjetaId + ", \"" + nombre + "\")'>✓ Pagar este corte</button>"
-    + "<button class='btn-cancel-edit' onclick='document.getElementById(\"" + panelId + "\").remove()'>Cancelar</button>"
+    + "<button class='btn-cancel-edit' style='border-color:var(--danger);color:var(--danger)' onclick='document.getElementById(\"" + panelId + "\").remove()'>Cancelar</button>"
     + "</div>";
 
   // Insertar después de la tarjeta que contiene el botón
