@@ -2399,12 +2399,13 @@ function renderPrivate(person) {
   // Acordeon de gastos — usa el modo de vista (calendario o corte)
   var container = document.getElementById("priv-cats-p"+person);
   if (container) {
-    container.innerHTML = "";
-    // Guardar qué categorías están abiertas antes de reconstruir
+    // Guardar qué categorías están abiertas ANTES de borrar el contenedor
     const openCats = new Set();
     container.querySelectorAll(".cat-block.open").forEach(function(el) {
       if (el.dataset.catId) openCats.add(el.dataset.catId);
     });
+
+    container.innerHTML = "";
 
     // En modo corte el listado se filtra por mes_corte; en calendario por fecha
     var listado = filterByVista(expenses, person, month, privQ[person])
@@ -2561,6 +2562,7 @@ function updateMonedaUI(person) {
 function buildAccordion(cat, catExp, catTot, showDelete) {
   const block = document.createElement("div");
   block.className = "cat-block";
+  block.dataset.catId = cat.id;  // siempre presente para preservar estado open
 
   const sharedExp = catExp.filter(e => e.type === "shared");
   const indExp    = catExp.filter(e => e.type !== "shared");
