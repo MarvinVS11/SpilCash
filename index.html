@@ -1422,7 +1422,23 @@ function subscribeRealtime() {
   db.channel("gastos-rt")
     .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, (payload) => {
       if (payload.eventType === "INSERT") {
-        if (!expenses.find(e => e.id === payload.new.id)) expenses.unshift(mapRow(payload.new));
+        const existing = expenses.find(e => e.id === payload.new.id);
+        if (!existing) {
+          // Quitar entrada temporal (id negativo) del mismo gasto si existe
+          // La identificamos por desc + amount + date + person coincidentes
+          const r = payload.new;
+          const tempIdx = expenses.findIndex(e =>
+            e.id < 0 &&
+            e.desc   === r.desc &&
+            e.amount === parseFloat(r.amount) &&
+            e.date   === r.date &&
+            e.person === r.person
+          );
+          if (tempIdx !== -1) {
+            expenses.splice(tempIdx, 1);
+          }
+          expenses.unshift(mapRow(payload.new));
+        }
       } else if (payload.eventType === "DELETE") {
         expenses = expenses.filter(e => e.id !== payload.old.id);
       } else if (payload.eventType === "UPDATE") {
@@ -2287,7 +2303,7 @@ async function addExpense(person) {
         ? error.message : "Error desconocido al guardar";
       showToast("Error: " + msg, "err");
     } else {
-      showToast("✓ Gasto guardado", "ok");
+      showToast("\u2713 Gasto guardado", "ok");
       document.getElementById(`inp-desc-p${person}`).value = "";
       document.getElementById(`inp-amt-p${person}`).value  = "";
       // Resetear switch a efectivo tras guardar (si aplica)
@@ -2295,6 +2311,28 @@ async function addExpense(person) {
       if (sw) { sw.checked = false; updateSwitchUI(person); }
       const pagoEl = document.getElementById(`inp-pago-p${person}`);
       if (pagoEl) { pagoEl.value = "efectivo"; updateCorteUI(person); }
+
+      // Agregar al array local de inmediato sin esperar el realtime
+      // (el realtime puede tardar en mobile — así se ve reflejado al instante)
+      // Usamos un id temporal negativo; el realtime lo reemplazará con el real
+      const tempId = -(Date.now());
+      const newExp = {
+        id:        tempId,
+        desc,
+        amount,
+        amountCRC,
+        catId,
+        type:      type === "shared" ? "shared" : "p" + person,
+        person,
+        date,
+        onCard,
+        moneda,
+        tipoCambio,
+        tarjetaId,
+        mesCorte,
+      };
+      expenses.unshift(newExp);
+      renderAll();
     }
   } catch (e) {
     const msg = (e && typeof e.message === "string") ? e.message : String(e);
