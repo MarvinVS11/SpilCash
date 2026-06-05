@@ -1920,7 +1920,7 @@ function drawPieFrame(ctx, cx, cy, r, segments, total, progress, activeIdx) {
 
     // Línea de porcentaje en el segmento activo (si está completo)
     if (isActive && progress >= 1) {
-      const pct = Math.round((sg.value / total) * 100);
+      const pct = ((sg.value / total) * 100).toFixed(1);
       const lineR1 = r + 8;
       const lineR2 = r + 20;
       const tx     = r + 26;
@@ -2099,10 +2099,9 @@ function renderChart(person, income, totalSaving, totalDebt, totalExpense) {
   // Leyenda — clic/tap para activar segmento desde la leyenda también
   const legend = document.getElementById("chart-legend-" + person);
   if (!legend) return;
+  const total = segments.reduce((s, sg) => s + sg.value, 0);
   legend.innerHTML = segments.map((sg, idx) => {
-    const pct = (income + totalSaving + totalDebt + totalExpense) > 0 || saldo > 0
-      ? (sg.value / (totalSaving + totalDebt + totalExpense + saldo) * 100).toFixed(0)
-      : "0";
+    const pct = total > 0 ? (sg.value / total * 100).toFixed(1) : "0.0";
     return `<div class="chart-legend-item" style="cursor:pointer"
       onmouseenter="chartState['chart-${person}'] && (chartState['chart-${person}'].activeIdx=${idx}, drawPieFrame(chartState['chart-${person}'].ctx,${person === 1 ? 80 : 80},${person === 1 ? 80 : 80},chartState['chart-${person}'].r,chartState['chart-${person}'].segments,chartState['chart-${person}'].total,1,${idx}), updateTooltip(${person},${idx},chartState['chart-${person}'].segments,chartState['chart-${person}'].total))"
       onmouseleave="chartState['chart-${person}'] && (chartState['chart-${person}'].activeIdx=-1, drawPieFrame(chartState['chart-${person}'].ctx,80,80,chartState['chart-${person}'].r,chartState['chart-${person}'].segments,chartState['chart-${person}'].total,1,-1), hideTooltip(${person}))">
