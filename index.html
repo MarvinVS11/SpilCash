@@ -1993,36 +1993,37 @@ function drawPieChart(canvasId, segments) {
   // Extraer person id del canvasId ("chart-1" → "1")
   const person = canvasId.replace("chart-", "");
 
-  // Guardar estado para hover
+  // Quitar listeners anteriores si existen
+  const prev = chartState[canvasId];
+  if (prev) {
+    if (prev.onMove)   canvas.removeEventListener("mousemove",  prev.onMove);
+    if (prev.onLeave)  canvas.removeEventListener("mouseleave", prev.onLeave);
+    if (prev.onTouch)  canvas.removeEventListener("touchstart", prev.onTouch);
+    if (prev.onTouchE) canvas.removeEventListener("touchend",   prev.onTouchE);
+    if (prev.rafId)    cancelAnimationFrame(prev.rafId);
+  }
+
+  // Guardar estado
   chartState[canvasId] = { ctx, cx, cy, r, segments, total, person, activeIdx: -1 };
+  const st = chartState[canvasId];
 
   // ── Animación de entrada ─────────────────────────────────────
-  if (chartState[canvasId].rafId) cancelAnimationFrame(chartState[canvasId].rafId);
-  const duration = 700; // ms
+  const duration = 700;
   const start    = performance.now();
 
   function animate(now) {
     const progress = Math.min(1, (now - start) / duration);
-    // Easing: ease-out cubic
-    const eased = 1 - Math.pow(1 - progress, 3);
-    drawPieFrame(ctx, cx, cy, r, segments, total, eased, chartState[canvasId].activeIdx);
+    const eased    = 1 - Math.pow(1 - progress, 3);
+    drawPieFrame(st.ctx, cx, cy, r, segments, total, eased, st.activeIdx);
     if (progress < 1) {
-      chartState[canvasId].rafId = requestAnimationFrame(animate);
+      st.rafId = requestAnimationFrame(animate);
     }
   }
-  chartState[canvasId].rafId = requestAnimationFrame(animate);
+  st.rafId = requestAnimationFrame(animate);
 
-  // ── Listeners hover/tap ─────────────────────────────────────
-  // Quitar listeners anteriores clonando el canvas
-  const newCanvas = canvas.cloneNode(true);
-  canvas.parentNode.replaceChild(newCanvas, canvas);
-  const nc  = newCanvas;
-  const nCtx = nc.getContext("2d");
-  nCtx.scale(dpr, dpr);
-  chartState[canvasId].ctx = nCtx;
-
+  // ── Helpers de posición ─────────────────────────────────────
   function getPos(e) {
-    const rect = nc.getBoundingClientRect();
+    const rect   = canvas.getBoundingClientRect();
     const scaleX = size / rect.width;
     const scaleY = size / rect.height;
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -2035,7 +2036,6 @@ function drawPieChart(canvasId, segments) {
 
   function updateActive(e) {
     const pos = getPos(e);
-    const st  = chartState[canvasId];
     const idx = getSegmentAtPoint(pos.x, pos.y, cx, cy, r, segments, total);
     if (idx === st.activeIdx) return;
     st.activeIdx = idx;
@@ -2044,16 +2044,21 @@ function drawPieChart(canvasId, segments) {
   }
 
   function clearActive() {
-    const st = chartState[canvasId];
     st.activeIdx = -1;
     drawPieFrame(st.ctx, cx, cy, r, segments, total, 1, -1);
     hideTooltip(person);
   }
 
-  nc.addEventListener("mousemove",  updateActive);
-  nc.addEventListener("touchstart", updateActive, { passive: true });
-  nc.addEventListener("mouseleave", clearActive);
-  nc.addEventListener("touchend",   clearActive);
+  // Guardar referencias para poder quitarlos la próxima vez
+  st.onMove   = updateActive;
+  st.onLeave  = clearActive;
+  st.onTouch  = updateActive;
+  st.onTouchE = clearActive;
+
+  canvas.addEventListener("mousemove",  st.onMove);
+  canvas.addEventListener("mouseleave", st.onLeave);
+  canvas.addEventListener("touchstart", st.onTouch,  { passive: true });
+  canvas.addEventListener("touchend",   st.onTouchE);
 }
 
 function updateTooltip(person, idx, segments, total) {
