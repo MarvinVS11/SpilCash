@@ -423,7 +423,30 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
 }
 .chart-canvas-wrap { flex-shrink: 0; position: relative; width: 160px; height: 160px; }
-.chart-canvas-wrap canvas { width: 160px !important; height: 160px !important; }
+.chart-canvas-wrap canvas { width: 160px !important; height: 160px !important; cursor: pointer; }
+
+/* Tooltip del gráfico */
+.chart-tooltip {
+  position: absolute;
+  background: var(--card2);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 0.72rem;
+  color: var(--text);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  transform: translate(-50%, -110%);
+  top: 0; left: 50%;
+}
+.chart-tooltip.visible { opacity: 1; }
+.chart-tooltip .tt-label { color: var(--muted); font-size: 0.65rem; margin-bottom: 2px; }
+.chart-tooltip .tt-pct   { font-size: 0.95rem; font-weight: 700; }
+.chart-tooltip .tt-amt   { font-size: 0.72rem; color: var(--muted); }
 .chart-center-label {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
   text-align: center; pointer-events: none;
@@ -607,6 +630,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
             <div class="cl-val" id="chart-center-val-1">¢0</div>
             <div class="cl-lbl">Saldo</div>
           </div>
+          <div class="chart-tooltip" id="chart-tooltip-1">
+            <div class="tt-label" id="tt-label-1"></div>
+            <div class="tt-pct"   id="tt-pct-1"></div>
+            <div class="tt-amt"   id="tt-amt-1"></div>
+          </div>
         </div>
         <div class="chart-legend" id="chart-legend-1"></div>
       </div>
@@ -735,6 +763,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
           <div class="chart-center-label">
             <div class="cl-val" id="chart-center-val-2">¢0</div>
             <div class="cl-lbl">Saldo</div>
+          </div>
+          <div class="chart-tooltip" id="chart-tooltip-2">
+            <div class="tt-label" id="tt-label-2"></div>
+            <div class="tt-pct"   id="tt-pct-2"></div>
+            <div class="tt-amt"   id="tt-amt-2"></div>
           </div>
         </div>
         <div class="chart-legend" id="chart-legend-2"></div>
@@ -1835,6 +1868,113 @@ const PIE_COLORS = {
   saldo:   "#a78bfa",
 };
 
+// Estado de animación por canvas
+const chartState = {};
+
+/**
+ * Dibuja el gráfico en un momento dado de la animación (progress 0→1).
+ * Segmento activo se expande ligeramente (explode).
+ */
+function drawPieFrame(ctx, cx, cy, r, segments, total, progress, activeIdx) {
+  ctx.clearRect(0, 0, cx * 2, cy * 2);
+
+  if (total <= 0) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(44,49,84,0.8)";
+    ctx.lineWidth = 18;
+    ctx.stroke();
+    return;
+  }
+
+  // Dibujar hasta progress * 2π
+  const totalAngle = Math.PI * 2 * progress;
+  let angle = -Math.PI / 2;
+  let drawn = 0;
+
+  segments.forEach((sg, idx) => {
+    if (sg.value <= 0) return;
+    const fullSlice = (sg.value / total) * Math.PI * 2;
+    const slice = Math.min(fullSlice, Math.max(0, totalAngle - drawn));
+    if (slice <= 0) return;
+
+    // Segmento activo: expandir ligeramente hacia afuera
+    const isActive = idx === activeIdx;
+    const explode  = isActive ? 6 : 0;
+    const midAngle = angle + slice / 2;
+    const ox = Math.cos(midAngle) * explode;
+    const oy = Math.sin(midAngle) * explode;
+
+    ctx.beginPath();
+    ctx.moveTo(cx + ox, cy + oy);
+    ctx.arc(cx + ox, cy + oy, r, angle, angle + slice);
+    ctx.closePath();
+    ctx.fillStyle = sg.color;
+    // Sombra suave en el activo
+    if (isActive) {
+      ctx.shadowColor = sg.color;
+      ctx.shadowBlur  = 10;
+    }
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Línea de porcentaje en el segmento activo (si está completo)
+    if (isActive && progress >= 1) {
+      const pct = Math.round((sg.value / total) * 100);
+      const lineR1 = r + 8;
+      const lineR2 = r + 20;
+      const tx     = r + 26;
+      const lx1 = cx + Math.cos(midAngle) * lineR1;
+      const ly1 = cy + Math.sin(midAngle) * lineR1;
+      const lx2 = cx + Math.cos(midAngle) * lineR2;
+      const ly2 = cy + Math.sin(midAngle) * lineR2;
+      ctx.beginPath();
+      ctx.moveTo(lx1, ly1);
+      ctx.lineTo(lx2, ly2);
+      ctx.strokeStyle = sg.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    drawn += fullSlice;
+    angle += fullSlice;
+  });
+
+  // Hueco interior (donut)
+  const bgColor = getComputedStyle(document.documentElement)
+    .getPropertyValue("--card").trim() || "#1e2236";
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 22, 0, Math.PI * 2);
+  ctx.fillStyle = bgColor;
+  ctx.fill();
+}
+
+/**
+ * Detecta qué segmento está bajo el cursor/toque dado un punto (x,y).
+ * Devuelve el índice del segmento o -1.
+ */
+function getSegmentAtPoint(x, y, cx, cy, r, segments, total) {
+  const dx = x - cx, dy = y - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < r - 22 || dist > r + 6) return -1;
+  let angle = Math.atan2(dy, dx);
+  // normalizar a inicio en -PI/2
+  angle = angle - (-Math.PI / 2);
+  if (angle < 0) angle += Math.PI * 2;
+  let acc = 0;
+  for (let i = 0; i < segments.length; i++) {
+    if (segments[i].value <= 0) continue;
+    const slice = (segments[i].value / total) * Math.PI * 2;
+    if (angle >= acc && angle < acc + slice) return i;
+    acc += slice;
+  }
+  return -1;
+}
+
+/**
+ * Inicia la animación de entrada del gráfico y configura los listeners
+ * de hover/tap para mostrar el tooltip con porcentaje.
+ */
 function drawPieChart(canvasId, segments) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
@@ -1844,58 +1984,129 @@ function drawPieChart(canvasId, segments) {
   canvas.width  = size * dpr;
   canvas.height = size * dpr;
   ctx.scale(dpr, dpr);
-  const cx = size / 2, cy = size / 2, r = size / 2 - 10;
+
+  const cx    = size / 2;
+  const cy    = size / 2;
+  const r     = size / 2 - 14;
   const total = segments.reduce((s, sg) => s + sg.value, 0);
-  if (total <= 0) {
-    ctx.clearRect(0, 0, size, size);
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(44,49,84,0.8)";
-    ctx.lineWidth = 18;
-    ctx.stroke();
+
+  // Extraer person id del canvasId ("chart-1" → "1")
+  const person = canvasId.replace("chart-", "");
+
+  // Guardar estado para hover
+  chartState[canvasId] = { ctx, cx, cy, r, segments, total, person, activeIdx: -1 };
+
+  // ── Animación de entrada ─────────────────────────────────────
+  if (chartState[canvasId].rafId) cancelAnimationFrame(chartState[canvasId].rafId);
+  const duration = 700; // ms
+  const start    = performance.now();
+
+  function animate(now) {
+    const progress = Math.min(1, (now - start) / duration);
+    // Easing: ease-out cubic
+    const eased = 1 - Math.pow(1 - progress, 3);
+    drawPieFrame(ctx, cx, cy, r, segments, total, eased, chartState[canvasId].activeIdx);
+    if (progress < 1) {
+      chartState[canvasId].rafId = requestAnimationFrame(animate);
+    }
+  }
+  chartState[canvasId].rafId = requestAnimationFrame(animate);
+
+  // ── Listeners hover/tap ─────────────────────────────────────
+  // Quitar listeners anteriores clonando el canvas
+  const newCanvas = canvas.cloneNode(true);
+  canvas.parentNode.replaceChild(newCanvas, canvas);
+  const nc  = newCanvas;
+  const nCtx = nc.getContext("2d");
+  nCtx.scale(dpr, dpr);
+  chartState[canvasId].ctx = nCtx;
+
+  function getPos(e) {
+    const rect = nc.getBoundingClientRect();
+    const scaleX = size / rect.width;
+    const scaleY = size / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top)  * scaleY,
+    };
+  }
+
+  function updateActive(e) {
+    const pos = getPos(e);
+    const st  = chartState[canvasId];
+    const idx = getSegmentAtPoint(pos.x, pos.y, cx, cy, r, segments, total);
+    if (idx === st.activeIdx) return;
+    st.activeIdx = idx;
+    drawPieFrame(st.ctx, cx, cy, r, segments, total, 1, idx);
+    updateTooltip(person, idx, segments, total);
+  }
+
+  function clearActive() {
+    const st = chartState[canvasId];
+    st.activeIdx = -1;
+    drawPieFrame(st.ctx, cx, cy, r, segments, total, 1, -1);
+    hideTooltip(person);
+  }
+
+  nc.addEventListener("mousemove",  updateActive);
+  nc.addEventListener("touchstart", updateActive, { passive: true });
+  nc.addEventListener("mouseleave", clearActive);
+  nc.addEventListener("touchend",   clearActive);
+}
+
+function updateTooltip(person, idx, segments, total) {
+  const tt = document.getElementById("chart-tooltip-" + person);
+  if (!tt) return;
+  if (idx < 0 || !segments[idx] || segments[idx].value <= 0) {
+    tt.classList.remove("visible");
     return;
   }
-  let angle = -Math.PI / 2;
-  segments.forEach(sg => {
-    if (sg.value <= 0) return;
-    const slice = (sg.value / total) * Math.PI * 2;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r, angle, angle + slice);
-    ctx.closePath();
-    ctx.fillStyle = sg.color;
-    ctx.fill();
-    angle += slice;
-  });
-  // Hueco interior
-  ctx.beginPath();
-  ctx.arc(cx, cy, r - 20, 0, Math.PI * 2);
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--card").trim() || "#1e2236";
-  ctx.fill();
+  const sg  = segments[idx];
+  const pct = total > 0 ? ((sg.value / total) * 100).toFixed(1) : "0";
+  document.getElementById("tt-label-" + person).textContent = sg.label;
+  document.getElementById("tt-pct-"   + person).textContent = pct + "%";
+  document.getElementById("tt-pct-"   + person).style.color = sg.color;
+  document.getElementById("tt-amt-"   + person).textContent = fmt(sg.value);
+  tt.classList.add("visible");
+}
+
+function hideTooltip(person) {
+  const tt = document.getElementById("chart-tooltip-" + person);
+  if (tt) tt.classList.remove("visible");
 }
 
 function renderChart(person, income, totalSaving, totalDebt, totalExpense) {
   const saldo = Math.max(0, income - totalSaving - totalDebt - totalExpense);
   const segments = [
-    { label: "Ahorro",    value: totalSaving,  color: PIE_COLORS.saving  },
-    { label: "Deudas",    value: totalDebt,    color: PIE_COLORS.debt    },
-    { label: "Gastos",    value: totalExpense, color: PIE_COLORS.expense },
-    { label: "Disponible",value: saldo,        color: PIE_COLORS.saldo   },
+    { label: "Ahorro",     value: totalSaving,  color: PIE_COLORS.saving  },
+    { label: "Deudas",     value: totalDebt,    color: PIE_COLORS.debt    },
+    { label: "Gastos",     value: totalExpense, color: PIE_COLORS.expense },
+    { label: "Disponible", value: saldo,        color: PIE_COLORS.saldo   },
   ];
-  drawPieChart(`chart-${person}`, segments);
+  drawPieChart("chart-" + person, segments);
+
   // Centro
-  const centerVal = document.getElementById(`chart-center-val-${person}`);
+  const centerVal = document.getElementById("chart-center-val-" + person);
   if (centerVal) centerVal.textContent = fmt(saldo);
-  // Leyenda
-  const legend = document.getElementById(`chart-legend-${person}`);
+
+  // Leyenda — clic/tap para activar segmento desde la leyenda también
+  const legend = document.getElementById("chart-legend-" + person);
   if (!legend) return;
-  legend.innerHTML = segments.map(sg => `
-    <div class="chart-legend-item">
+  legend.innerHTML = segments.map((sg, idx) => {
+    const pct = (income + totalSaving + totalDebt + totalExpense) > 0 || saldo > 0
+      ? (sg.value / (totalSaving + totalDebt + totalExpense + saldo) * 100).toFixed(0)
+      : "0";
+    return `<div class="chart-legend-item" style="cursor:pointer"
+      onmouseenter="chartState['chart-${person}'] && (chartState['chart-${person}'].activeIdx=${idx}, drawPieFrame(chartState['chart-${person}'].ctx,${person === 1 ? 80 : 80},${person === 1 ? 80 : 80},chartState['chart-${person}'].r,chartState['chart-${person}'].segments,chartState['chart-${person}'].total,1,${idx}), updateTooltip(${person},${idx},chartState['chart-${person}'].segments,chartState['chart-${person}'].total))"
+      onmouseleave="chartState['chart-${person}'] && (chartState['chart-${person}'].activeIdx=-1, drawPieFrame(chartState['chart-${person}'].ctx,80,80,chartState['chart-${person}'].r,chartState['chart-${person}'].segments,chartState['chart-${person}'].total,1,-1), hideTooltip(${person}))">
       <div class="chart-legend-dot" style="background:${sg.color}"></div>
       <span class="chart-legend-lbl">${sg.label}</span>
       <span class="chart-legend-val">${fmt(sg.value)}</span>
-    </div>
-  `).join("");
+      <span style="font-size:0.65rem;color:${sg.color};margin-left:4px">${pct}%</span>
+    </div>`;
+  }).join("");
 }
 
 /* ─────────────────────────────────────────────────────────────
