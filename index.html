@@ -1586,6 +1586,8 @@ function tryLogin(person) {
     document.getElementById("panel-p"+person).style.display  = "block";
     initMonthSelects();
     renderPrivate(person);
+    // Doble rAF: esperar que el layout esté calculado antes de medir offsetWidth
+    requestAnimationFrame(() => requestAnimationFrame(() => initVistaIndicators()));
   } else {
     errEl.style.display = "block";
     input.select();
@@ -3182,8 +3184,7 @@ function renderAll() {
   renderPublic();
   if (loggedIn[1]) renderPrivate(1);
   if (loggedIn[2]) renderPrivate(2);
-  // Posicionar indicadores del toggle tras cada render
-  requestAnimationFrame(initVistaIndicators);
+  requestAnimationFrame(() => requestAnimationFrame(() => initVistaIndicators()));
 }
 
 initMonthSelects();
