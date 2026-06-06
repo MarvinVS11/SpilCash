@@ -79,14 +79,43 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .q-pill.active { background: rgba(62,207,170,0.15); border-color: var(--sh); color: var(--sh); }
 
 /* ── Toggle vista calendario/corte ── */
-.vista-toggle { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
-.vista-btn {
-  background: transparent; border: 1.5px solid var(--border); color: var(--muted);
-  padding: 5px 12px; border-radius: 8px; font-family: inherit; font-size: 0.94rem;
-  letter-spacing: 0.5px; cursor: pointer; transition: var(--tr); white-space: nowrap;
+.vista-toggle {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px; flex-wrap: nowrap;
 }
-.vista-btn:hover { border-color: var(--a1); color: var(--text); }
-.vista-btn.active { background: rgba(91,138,255,0.15); border-color: var(--a1); color: var(--a1); }
+.vista-lbl {
+  font-size: 0.77rem; color: var(--muted); white-space: nowrap;
+  transition: color 0.2s; cursor: pointer;
+}
+.vista-lbl.active { color: var(--a1); font-weight: 700; }
+.vista-switch-wrap {
+  position: relative; flex-shrink: 0;
+  width: 46px; height: 24px; cursor: pointer;
+}
+.vista-switch-wrap input {
+  opacity: 0; width: 0; height: 0; position: absolute;
+}
+.vista-switch-track {
+  position: absolute; inset: 0;
+  background: var(--border); border-radius: 12px;
+  transition: background 0.25s;
+}
+.vista-switch-wrap input:checked ~ .vista-switch-track {
+  background: var(--a1);
+}
+.vista-switch-track::after {
+  content: ""; position: absolute;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; top: 3px; left: 3px;
+  transition: transform 0.25s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.vista-switch-wrap input:checked ~ .vista-switch-track::after {
+  transform: translateX(22px);
+}
+.vista-btn {
+  display: none; /* ocultar botones antiguos si quedan */
+}
 
 /* ── Badge de corte de tarjeta ── */
 .corte-badge {
@@ -723,8 +752,12 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Acordeón -->
       <p class="sec">/ Mis Gastos del Período</p>
       <div class="vista-toggle" id="vista-toggle-1">
-        <button class="vista-btn active" id="vista-cal-1" onclick="setVista(1,'calendario')">📅 Mes calendario</button>
-        <button class="vista-btn" id="vista-cor-1" onclick="setVista(1,'corte')">💳 Corte de tarjeta</button>
+        <span class="vista-lbl active" id="vista-cal-1" onclick="setVista(1,'calendario')">📅 Calendario</span>
+        <label class="vista-switch-wrap">
+          <input type="checkbox" id="vista-sw-1" onchange="setVista(1, this.checked ? 'corte' : 'calendario')"/>
+          <div class="vista-switch-track"></div>
+        </label>
+        <span class="vista-lbl" id="vista-cor-1" onclick="setVista(1,'corte')">💳 Corte</span>
       </div>
       <div class="categories" id="priv-cats-p1"></div>
     </div>
@@ -857,8 +890,12 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Acordeón -->
       <p class="sec">/ Mis Gastos del Período</p>
       <div class="vista-toggle" id="vista-toggle-2">
-        <button class="vista-btn active" id="vista-cal-2" onclick="setVista(2,'calendario')">📅 Mes calendario</button>
-        <button class="vista-btn" id="vista-cor-2" onclick="setVista(2,'corte')">💳 Corte de tarjeta</button>
+        <span class="vista-lbl active" id="vista-cal-2" onclick="setVista(2,'calendario')">📅 Calendario</span>
+        <label class="vista-switch-wrap">
+          <input type="checkbox" id="vista-sw-2" onchange="setVista(2, this.checked ? 'corte' : 'calendario')"/>
+          <div class="vista-switch-track"></div>
+        </label>
+        <span class="vista-lbl" id="vista-cor-2" onclick="setVista(2,'corte')">💳 Corte</span>
       </div>
       <div class="categories" id="priv-cats-p2"></div>
     </div>
@@ -1076,12 +1113,20 @@ function setPrivQ(person, q) {
  */
 function setVista(person, modo) {
   vistaPriv[person] = modo;
-  const calBtn = document.getElementById(`vista-cal-${person}`);
-  const corBtn = document.getElementById(`vista-cor-${person}`);
-  if (calBtn) calBtn.classList.toggle("active", modo === "calendario");
-  if (corBtn) corBtn.classList.toggle("active", modo === "corte");
+  const isCorte = modo === "corte";
+
+  // Sincronizar checkbox
+  const sw = document.getElementById(`vista-sw-${person}`);
+  if (sw) sw.checked = isCorte;
+
+  // Labels: activo el seleccionado
+  const calLbl = document.getElementById(`vista-cal-${person}`);
+  const corLbl = document.getElementById(`vista-cor-${person}`);
+  if (calLbl) calLbl.classList.toggle("active", !isCorte);
+  if (corLbl) corLbl.classList.toggle("active",  isCorte);
+
   // En modo corte forzar "mes completo" (q=0) ya que el corte es mensual
-  if (modo === "corte") {
+  if (isCorte) {
     privQ[person] = 0;
     [0,1,2].forEach(n => {
       const el = document.getElementById(`p${person}-q${n}`);
