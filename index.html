@@ -52,7 +52,7 @@ nav { display: flex; gap: 6px; flex-wrap: wrap; }
 nav button {
   background: transparent; border: 1.5px solid var(--border); color: var(--muted);
   padding: 6px 13px; border-radius: 6px; cursor: pointer; font-family: inherit;
-  font-size: 0.91rem; letter-spacing: 1px; text-transform: uppercase; transition: var(--tr);
+  font-size: 0.84rem; letter-spacing: 1px; text-transform: uppercase; transition: var(--tr);
 }
 nav button.active, nav button:hover { color: var(--text); border-color: var(--a1); background: rgba(91,138,255,0.12); }
 
@@ -62,19 +62,19 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .page.active { display: block; }
 
 /* ── Sección título ── */
-.sec { font-size: 1.00rem; text-transform: uppercase; letter-spacing: 3px; color: var(--muted); margin: 22px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.sec { font-size: 0.93rem; text-transform: uppercase; letter-spacing: 3px; color: var(--muted); margin: 22px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 .sec:first-child { margin-top: 0; }
 
 /* ── Period bar ── */
 .period-bar { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--r); padding: 10px 14px; display: flex; align-items: center; gap: 11px; flex-wrap: wrap; margin-bottom: 16px; }
-.period-bar label { font-size: 0.98rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.period-bar label { font-size: 0.91rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
 .period-bar input[type="month"],
-.period-bar .month-select { background: var(--surface); border: 1.5px solid var(--border); border-radius: 6px; color: var(--text); padding: 5px 9px; font-family: inherit; font-size: 0.93rem; cursor: pointer; }
+.period-bar .month-select { background: var(--surface); border: 1.5px solid var(--border); border-radius: 6px; color: var(--text); padding: 5px 9px; font-family: inherit; font-size: 0.86rem; cursor: pointer; }
 .period-bar input[type="month"]:focus,
 .period-bar .month-select:focus { outline: none; border-color: var(--a1); }
 .period-bar .month-select option { background: var(--surface); }
 .q-pills { display: flex; gap: 5px; flex-wrap: wrap; }
-.q-pill { background: transparent; border: 1.5px solid var(--border); color: var(--muted); padding: 3px 10px; border-radius: 20px; font-family: inherit; font-size: 1.00rem; letter-spacing: 1px; cursor: pointer; transition: var(--tr); white-space: nowrap; }
+.q-pill { background: transparent; border: 1.5px solid var(--border); color: var(--muted); padding: 3px 10px; border-radius: 20px; font-family: inherit; font-size: 0.93rem; letter-spacing: 1px; cursor: pointer; transition: var(--tr); white-space: nowrap; }
 .q-pill:hover { border-color: var(--sh); color: var(--sh); }
 .q-pill.active { background: rgba(62,207,170,0.15); border-color: var(--sh); color: var(--sh); }
 
@@ -82,7 +82,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .vista-toggle { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
 .vista-btn {
   background: transparent; border: 1.5px solid var(--border); color: var(--muted);
-  padding: 5px 12px; border-radius: 8px; font-family: inherit; font-size: 1.01rem;
+  padding: 5px 12px; border-radius: 8px; font-family: inherit; font-size: 0.94rem;
   letter-spacing: 0.5px; cursor: pointer; transition: var(--tr); white-space: nowrap;
 }
 .vista-btn:hover { border-color: var(--a1); color: var(--text); }
@@ -90,21 +90,21 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 
 /* ── Badge de corte de tarjeta ── */
 .corte-badge {
-  display: inline-block; font-size: 0.91rem; padding: 1px 6px; border-radius: 8px;
+  display: inline-block; font-size: 0.84rem; padding: 1px 6px; border-radius: 8px;
   letter-spacing: 0.5px; margin-left: 4px; white-space: nowrap;
   background: rgba(245,200,66,0.15); color: var(--warn); border: 1px solid rgba(245,200,66,0.3);
 }
 .tarjeta-badge {
-  display: inline-block; font-size: 0.91rem; padding: 1px 6px; border-radius: 8px;
+  display: inline-block; font-size: 0.84rem; padding: 1px 6px; border-radius: 8px;
   letter-spacing: 0.5px; margin-left: 4px; white-space: nowrap; font-weight: 700;
 }
 
 /* ── Summary cards ── */
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
 .sc { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--r); padding: 14px 10px; text-align: center; }
-.sc .lbl { font-size: 0.94rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.sc .lbl { font-size: 0.87rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
 .sc .amt { font-size: clamp(0.98rem, 2.8vw, 1.45rem); font-weight: 700; }
-.sc .sub { font-size: 0.91rem; color: var(--muted); margin-top: 3px; letter-spacing: 1px; }
+.sc .sub { font-size: 0.84rem; color: var(--muted); margin-top: 3px; letter-spacing: 1px; }
 .amt.c1      { color: var(--a1);     }
 .amt.c2      { color: var(--a2);     }
 .amt.cs      { color: var(--sh);     }
@@ -118,7 +118,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .balance-box { background: var(--card); border: 1.5px solid var(--sh); border-radius: var(--r); padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 9px; }
 .balance-box.negative { border-color: var(--danger); }
 .balance-box .bico { font-size: 1.1rem; flex-shrink: 0; padding-top: 1px; }
-.balance-box p { font-size: 1.02rem; line-height: 1.55; }
+.balance-box p { font-size: 0.95rem; line-height: 1.55; }
 .balance-box strong { color: var(--sh); }
 .balance-box.negative strong { color: var(--danger); }
 
@@ -129,22 +129,22 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;
 }
 .budget-row .fg-budget { display: flex; flex-direction: column; gap: 4px; }
-.budget-row .fg-budget label { font-size: 0.81rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+.budget-row .fg-budget label { font-size: 0.74rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
 .budget-row .fg-budget input {
   background: var(--card); border: 1.5px solid var(--border); border-radius: 6px;
-  color: var(--text); padding: 7px 9px; font-family: inherit; font-size: 1.02rem; width: 100%;
+  color: var(--text); padding: 7px 9px; font-family: inherit; font-size: 0.95rem; width: 100%;
   transition: border-color var(--tr);
 }
 .budget-row .fg-budget input:focus { outline: none; border-color: var(--a1); }
 .budget-row .fg-budget .prefix { position: relative; }
 .budget-row .fg-budget .prefix span {
   position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
-  color: var(--muted); font-size: 1.10rem; pointer-events: none;
+  color: var(--muted); font-size: 1.03rem; pointer-events: none;
 }
 .budget-row .fg-budget .prefix input { padding-left: 18px; }
 .btn-save-budget {
   align-self: flex-end; background: var(--a1); color: #fff; border: none; border-radius: 6px;
-  padding: 8px 16px; font-family: inherit; font-size: 0.94rem; letter-spacing: 1.5px;
+  padding: 8px 16px; font-family: inherit; font-size: 0.87rem; letter-spacing: 1.5px;
   text-transform: uppercase; cursor: pointer; transition: opacity var(--tr); white-space: nowrap;
 }
 .btn-save-budget:hover { opacity: 0.82; }
@@ -153,9 +153,9 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .breakdown-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 9px; margin-bottom: 16px; }
 .bk-card { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--r); padding: 13px 11px; }
 .bk-card .bk-ico  { font-size: 1.1rem; margin-bottom: 4px; }
-.bk-card .bk-cat  { font-size: 0.81rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
-.bk-card .bk-amt  { font-size: 1.34rem; font-weight: 700; color: var(--sh); }
-.bk-card .bk-sh   { font-size: 1.00rem; color: var(--muted); margin-top: 2px; }
+.bk-card .bk-cat  { font-size: 0.74rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.bk-card .bk-amt  { font-size: 1.27rem; font-weight: 700; color: var(--sh); }
+.bk-card .bk-sh   { font-size: 0.93rem; color: var(--muted); margin-top: 2px; }
 
 /* ── Acordeón ── */
 .categories { display: flex; flex-direction: column; gap: 8px; }
@@ -164,10 +164,10 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .cat-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 13px; cursor: pointer; user-select: none; gap: 8px; }
 .cat-left { display: flex; align-items: center; gap: 8px; flex: 1; }
 .cat-ico { font-size: 0.9rem; }
-.cat-nm  { font-size: 0.99rem; letter-spacing: 1px; text-transform: uppercase; }
-.cat-cnt { font-size: 0.94rem; color: var(--muted); background: var(--card2); border-radius: 10px; padding: 1px 7px; }
-.cat-tot { font-size: 0.99rem; color: var(--sh); font-weight: 700; white-space: nowrap; margin-right: 8px; }
-.cat-arr { font-size: 1.06rem; color: var(--muted); transition: transform var(--tr); }
+.cat-nm  { font-size: 0.92rem; letter-spacing: 1px; text-transform: uppercase; }
+.cat-cnt { font-size: 0.87rem; color: var(--muted); background: var(--card2); border-radius: 10px; padding: 1px 7px; }
+.cat-tot { font-size: 0.92rem; color: var(--sh); font-weight: 700; white-space: nowrap; margin-right: 8px; }
+.cat-arr { font-size: 0.99rem; color: var(--muted); transition: transform var(--tr); }
 .cat-block.open .cat-arr { transform: rotate(180deg); }
 .cat-body { 
   display: none; 
@@ -182,84 +182,84 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .expense-table { 
   width: 100%; 
   border-collapse: collapse; 
-  font-size: 1.10rem; 
+  font-size: 1.03rem; 
   margin-top: 4px; 
   min-width: 500px; 
 }
-.expense-table th { text-align: left; color: var(--muted); font-size: 0.81rem; letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 5px 5px; border-bottom: 1px solid var(--border); }
+.expense-table th { text-align: left; color: var(--muted); font-size: 0.74rem; letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 5px 5px; border-bottom: 1px solid var(--border); }
 .expense-table td { padding: 6px 5px; border-bottom: 1px dashed rgba(44,49,84,0.5); vertical-align: middle; }
 .expense-table tr:last-child td { border-bottom: none; }
-.shared-display { font-size: 0.99rem; font-weight: 700; color: var(--sh); }
-.shared-total   { font-size: 1.00rem; color: var(--muted); margin-left: 3px; }
+.shared-display { font-size: 0.92rem; font-weight: 700; color: var(--sh); }
+.shared-total   { font-size: 0.93rem; color: var(--muted); margin-left: 3px; }
 
-.tag { display: inline-block; font-size: 0.93rem; padding: 2px 6px; border-radius: 4px; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+.tag { display: inline-block; font-size: 0.86rem; padding: 2px 6px; border-radius: 4px; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
 .t-sh { background: rgba(62,207,170,0.15);  color: var(--sh);    }
 .t-p1 { background: rgba(91,138,255,0.15);  color: var(--a1);    }
 .t-p2 { background: rgba(255,107,157,0.15); color: var(--a2);    }
 .t-q1 { background: rgba(245,200,66,0.13);  color: var(--warn);  }
 .t-q2 { background: rgba(255,140,90,0.13);  color: var(--warn2); }
 
-.btn-del { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.89rem; padding: 2px 5px; border-radius: 4px; transition: background var(--tr); }
+.btn-del { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.82rem; padding: 2px 5px; border-radius: 4px; transition: background var(--tr); }
 .btn-del:hover { background: rgba(255,77,109,0.15); }
 
 /* ── Formulario agregar gasto ── */
 .add-form-wrap { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r); padding: 14px; margin-bottom: 18px; }
-.add-form-title { font-size: 0.98rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.add-form-title { font-size: 0.91rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
 .add-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 9px; margin-bottom: 10px; }
 @media (min-width: 500px) { .add-grid .span2 { grid-column: span 2; } }
 .fg { display: flex; flex-direction: column; gap: 4px; }
-.fg label { font-size: 0.94rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
-.fg input, .fg select { background: var(--card); border: 1.5px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 8px; font-family: inherit; font-size: 0.98rem; width: 100%; transition: border-color var(--tr); }
+.fg label { font-size: 0.87rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.fg input, .fg select { background: var(--card); border: 1.5px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 8px; font-family: inherit; font-size: 0.91rem; width: 100%; transition: border-color var(--tr); }
 .fg input:focus, .fg select:focus { outline: none; border-color: var(--a1); }
 .fg select option { background: var(--surface); }
-.btn-add { background: var(--a1); color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-family: inherit; font-size: 0.94rem; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; transition: opacity var(--tr), transform var(--tr); }
+.btn-add { background: var(--a1); color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-family: inherit; font-size: 0.87rem; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; transition: opacity var(--tr), transform var(--tr); }
 .btn-add:hover  { opacity: 0.85; transform: translateY(-1px); }
 .btn-add:active { transform: translateY(0); }
 .btn-add:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Login ── */
 .login-wrap { max-width: 340px; margin: 48px auto; background: var(--card); border: 1.5px solid var(--border); border-radius: var(--r); padding: 30px 22px; text-align: center; }
-.login-wrap h2 { font-size: 1.10rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 5px; }
+.login-wrap h2 { font-size: 1.03rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 5px; }
 .login-wrap h2.c1 { color: var(--a1); }
 .login-wrap h2.c2 { color: var(--a2); }
-.login-wrap .hint { font-size: 1.06rem; color: var(--muted); margin-bottom: 18px; }
-.login-wrap input { width: 100%; background: var(--surface); border: 1.5px solid var(--border); border-radius: 6px; color: var(--text); padding: 9px; font-family: inherit; font-size: 1.06rem; text-align: center; letter-spacing: 5px; margin-bottom: 10px; transition: border-color var(--tr); }
+.login-wrap .hint { font-size: 0.99rem; color: var(--muted); margin-bottom: 18px; }
+.login-wrap input { width: 100%; background: var(--surface); border: 1.5px solid var(--border); border-radius: 6px; color: var(--text); padding: 9px; font-family: inherit; font-size: 0.99rem; text-align: center; letter-spacing: 5px; margin-bottom: 10px; transition: border-color var(--tr); }
 .login-wrap input:focus { outline: none; border-color: var(--a1); }
-.login-wrap .btn-enter { width: 100%; background: var(--a1); color: #fff; border: none; border-radius: 6px; padding: 10px; font-family: inherit; font-size: 0.98rem; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: opacity var(--tr); }
+.login-wrap .btn-enter { width: 100%; background: var(--a1); color: #fff; border: none; border-radius: 6px; padding: 10px; font-family: inherit; font-size: 0.91rem; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: opacity var(--tr); }
 .login-wrap .btn-enter:hover { opacity: 0.85; }
-.login-error { color: var(--danger); font-size: 0.89rem; margin-top: 8px; display: none; }
+.login-error { color: var(--danger); font-size: 0.82rem; margin-top: 8px; display: none; }
 
 /* ── Panel privado cabecera ── */
 .priv-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
-.priv-head h2 { font-size: 1.04rem; letter-spacing: 2px; text-transform: uppercase; }
+.priv-head h2 { font-size: 0.97rem; letter-spacing: 2px; text-transform: uppercase; }
 .priv-head h2.p1 { color: var(--a1); }
 .priv-head h2.p2 { color: var(--a2); }
-.btn-out { background: transparent; border: 1.5px solid var(--border); color: var(--muted); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 1.00rem; letter-spacing: 1px; text-transform: uppercase; transition: var(--tr); }
+.btn-out { background: transparent; border: 1.5px solid var(--border); color: var(--muted); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.93rem; letter-spacing: 1px; text-transform: uppercase; transition: var(--tr); }
 .btn-out:hover { border-color: var(--danger); color: var(--danger); }
 
 /* ── Cambio de contraseña ── */
 .change-pwd-wrap { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r); padding: 14px 16px; margin-bottom: 16px; }
-.change-pwd-wrap summary { font-size: 1.00rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); cursor: pointer; list-style: none; }
+.change-pwd-wrap summary { font-size: 0.93rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); cursor: pointer; list-style: none; }
 .change-pwd-wrap summary::before { content: "🔑 "; }
 .change-pwd-wrap summary:hover { color: var(--text); }
 .pwd-fields { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: flex-end; }
 .pwd-fields .fg { flex: 1; min-width: 130px; }
 .pwd-fields .fg input { letter-spacing: 3px; }
-.btn-pwd { background: var(--card2); color: var(--text); border: 1.5px solid var(--border); border-radius: 6px; padding: 7px 14px; font-family: inherit; font-size: 0.91rem; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: var(--tr); white-space: nowrap; }
+.btn-pwd { background: var(--card2); color: var(--text); border: 1.5px solid var(--border); border-radius: 6px; padding: 7px 14px; font-family: inherit; font-size: 0.84rem; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: var(--tr); white-space: nowrap; }
 .btn-pwd:hover { border-color: var(--sh); color: var(--sh); }
 
 /* ── Running balance bar ── */
 .saldo-bar { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--r); padding: 12px 15px; margin-bottom: 16px; }
 .saldo-bar .saldo-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-.saldo-bar .saldo-lbl { font-size: 1.04rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
-.saldo-bar .saldo-num { font-size: 1.39rem; font-weight: 700; }
+.saldo-bar .saldo-lbl { font-size: 0.97rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.saldo-bar .saldo-num { font-size: 1.32rem; font-weight: 700; }
 .saldo-bar .saldo-num.pos { color: var(--saving); }
 .saldo-bar .saldo-num.neg { color: var(--danger); }
 .saldo-track { margin-top: 9px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
 .saldo-track-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease, background 0.3s; }
 
 /* ── Estado vacío ── */
-.empty { text-align: center; padding: 16px; color: var(--muted); font-size: 0.99rem; letter-spacing: 1px; }
+.empty { text-align: center; padding: 16px; color: var(--muted); font-size: 0.92rem; letter-spacing: 1px; }
 
 /* ── Spinner ── */
 .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 5px; }
@@ -276,7 +276,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .switch-row:hover { border-color: var(--debt); }
 .switch-row.active-card { border-color: var(--debt); background: rgba(251,146,60,0.08); }
 .switch-row .sw-lbl {
-  font-size: 1.00rem; letter-spacing: 0.5px; color: var(--muted); flex: 1;
+  font-size: 0.93rem; letter-spacing: 0.5px; color: var(--muted); flex: 1;
   transition: color var(--tr);
 }
 .switch-row.active-card .sw-lbl { color: var(--debt); }
@@ -302,7 +302,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .tag-cash { background: rgba(107,113,148,0.18); color: var(--muted); }
 
 /* ── Toast ── */
-#toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); padding: 8px 20px; border-radius: 20px; font-size: 0.89rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; z-index: 999; transition: transform 0.28s ease; white-space: nowrap; }
+#toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); padding: 8px 20px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; z-index: 999; transition: transform 0.28s ease; white-space: nowrap; }
 #toast.ok  { background: var(--sh);     color: #0d1a16; }
 #toast.err { background: var(--danger); color: #fff;    }
 #toast.show { transform: translateX(-50%) translateY(0); }
@@ -315,12 +315,12 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
 }
 .mod-header-title {
-  font-size: 0.89rem; text-transform: uppercase; letter-spacing: 3px; color: var(--muted);
+  font-size: 0.82rem; text-transform: uppercase; letter-spacing: 3px; color: var(--muted);
 }
 .btn-add-item {
   background: transparent; border: 1.5px solid var(--border); color: var(--muted);
   padding: 5px 12px; border-radius: 6px; cursor: pointer; font-family: inherit;
-  font-size: 0.89rem; letter-spacing: 1px; text-transform: uppercase; transition: var(--tr);
+  font-size: 0.82rem; letter-spacing: 1px; text-transform: uppercase; transition: var(--tr);
 }
 .btn-add-item:hover { border-color: var(--sh); color: var(--sh); }
 
@@ -334,7 +334,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .item-card.debt-usd   { border-left: 3px solid #60a5fa; }  /* azul para deudas USD */
 
 .currency-badge {
-  display: inline-block; font-size: 1.01rem; font-weight: 700;
+  display: inline-block; font-size: 0.94rem; font-weight: 700;
   padding: 2px 7px; border-radius: 10px; letter-spacing: 1px;
   text-transform: uppercase; vertical-align: middle; margin-left: 6px;
 }
@@ -342,7 +342,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .currency-badge.usd { background: rgba(96,165,250,0.18); color: #60a5fa;     }
 
 .tc-note {
-  font-size: 1.00rem; color: var(--muted); margin-top: 4px; text-align: right;
+  font-size: 0.93rem; color: var(--muted); margin-top: 4px; text-align: right;
 }
 .item-card.debt-card   { border-left: 3px solid var(--debt); }
 
@@ -351,11 +351,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   gap: 8px; margin-bottom: 10px;
 }
 .item-card-title {
-  font-size: 1.06rem; font-weight: 700; color: var(--text); flex: 1;
+  font-size: 0.99rem; font-weight: 700; color: var(--text); flex: 1;
 }
 .item-card-del {
   background: none; border: none; color: var(--muted); cursor: pointer;
-  font-size: 1.10rem; padding: 2px 5px; border-radius: 4px;
+  font-size: 1.03rem; padding: 2px 5px; border-radius: 4px;
   transition: color var(--tr), background var(--tr); flex-shrink: 0;
 }
 .item-card-del:hover { color: var(--danger); background: rgba(255,77,109,0.12); }
@@ -365,11 +365,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 }
 .item-amt-block { text-align: center; }
 .item-amt-lbl {
-  font-size: 1.10rem; letter-spacing: 1.5px; text-transform: uppercase;
+  font-size: 1.03rem; letter-spacing: 1.5px; text-transform: uppercase;
   color: var(--muted); display: block; margin-bottom: 3px;
 }
 .item-amt-val {
-  font-size: 1.19rem; font-weight: 700;
+  font-size: 1.12rem; font-weight: 700;
 }
 .item-amt-val.goal  { color: var(--income); }
 .item-amt-val.done  { color: var(--saving); }
@@ -402,7 +402,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .cuota-summary {
   background: var(--surface); border: 1.5px solid var(--border);
   border-radius: var(--r); padding: 10px 14px; margin-bottom: 14px;
-  font-size: 0.98rem;
+  font-size: 0.91rem;
 }
 .cuota-row {
   display: flex; justify-content: space-between; align-items: center;
@@ -433,7 +433,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   border-radius: 8px;
   padding: 6px 10px;
   font-family: inherit;
-  font-size: 1.00rem;
+  font-size: 0.93rem;
   color: var(--text);
   pointer-events: none;
   white-space: nowrap;
@@ -444,9 +444,9 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   top: 0; left: 50%;
 }
 .chart-tooltip.visible { opacity: 1; }
-.chart-tooltip .tt-label { color: var(--muted); font-size: 0.93rem; margin-bottom: 2px; }
-.chart-tooltip .tt-pct   { font-size: 1.09rem; font-weight: 700; }
-.chart-tooltip .tt-amt   { font-size: 1.00rem; color: var(--muted); }
+.chart-tooltip .tt-label { color: var(--muted); font-size: 0.86rem; margin-bottom: 2px; }
+.chart-tooltip .tt-pct   { font-size: 1.02rem; font-weight: 700; }
+.chart-tooltip .tt-amt   { font-size: 0.93rem; color: var(--muted); }
 .chart-center-label {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
   text-align: center; pointer-events: none;
@@ -455,11 +455,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   font-size: 1rem; font-weight: 700; color: var(--text); white-space: nowrap;
 }
 .chart-center-label .cl-lbl {
-  font-size: 0.98rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
+  font-size: 0.91rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
 }
 .chart-legend { flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: 7px; }
 .chart-legend-item {
-  display: flex; align-items: center; gap: 8px; font-size: 0.89rem;
+  display: flex; align-items: center; gap: 8px; font-size: 0.82rem;
 }
 .chart-legend-dot {
   width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
@@ -478,7 +478,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   color: var(--text);
   padding: 3px 5px;
   font-family: inherit;
-  font-size: 1.02rem;
+  font-size: 0.95rem;
   width: 100%;
   min-width: 0;
 }
@@ -486,7 +486,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 
 .btn-edit {
   background: none; border: none; color: var(--muted);
-  cursor: pointer; font-size: 1.00rem; padding: 2px 5px;
+  cursor: pointer; font-size: 0.93rem; padding: 2px 5px;
   border-radius: 4px; transition: color var(--tr), background var(--tr);
 }
 .btn-edit:hover { color: var(--a1); background: rgba(91,138,255,0.12); }
@@ -494,13 +494,13 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 
 .btn-save-edit {
   background: var(--sh); color: #0d1a16; border: none; border-radius: 5px;
-  padding: 3px 8px; font-family: inherit; font-size: 0.93rem;
+  padding: 3px 8px; font-family: inherit; font-size: 0.86rem;
   font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
   cursor: pointer; white-space: nowrap;
 }
 .btn-cancel-edit {
   background: none; border: 1px solid var(--border); color: var(--muted);
-  border-radius: 5px; padding: 3px 7px; font-family: inherit; font-size: 0.93rem;
+  border-radius: 5px; padding: 3px 7px; font-family: inherit; font-size: 0.86rem;
   letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
   white-space: nowrap;
 }
@@ -509,7 +509,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 /* ── Responsive ── */
 @media (max-width: 520px) {
   /* Escalar la raíz sube TODOS los rem proporcionalmente */
-  html { font-size: 19px; }
+  html { font-size: 17px; }
 
   header { padding: 10px 11px; }
   main   { padding: 12px 9px 60px; }
@@ -520,7 +520,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 
   /* Ajustes puntuales para que no se desborde en mobile */
   .add-grid           { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
-  .expense-table      { font-size: 0.94rem; }
+  .expense-table      { font-size: 0.87rem; }
   .item-amounts       { grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .edit-modal-grid    { gap: 4px; }
   .edit-modal-grid .fg.fg-desc  { min-width: 90px; }
@@ -538,7 +538,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
-  .expense-table { font-size: 0.89rem; }
+  .expense-table { font-size: 0.82rem; }
   .sc .amt       { font-size: clamp(0.9rem, 4vw, 1.3rem); }
 }
 </style>
@@ -1250,18 +1250,18 @@ function renderTarjetas(person) {
     // Totales gastados
     let totalesHTML = "";
     if (totalCnt === 0) {
-      totalesHTML = "<div style='font-size:0.91rem;color:var(--muted);margin-top:6px'>Sin gastos registrados con esta tarjeta</div>";
+      totalesHTML = "<div style='font-size:0.84rem;color:var(--muted);margin-top:6px'>Sin gastos registrados con esta tarjeta</div>";
     } else {
       totalesHTML = "<div style='display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;align-items:center'>";
       if (totalCRC > 0)
-        totalesHTML += "<div style='font-size:1.07rem'>"
-          + "<span style='color:var(--muted);font-size:0.76rem;text-transform:uppercase;letter-spacing:1px'>Gastado ¢ </span>"
+        totalesHTML += "<div style='font-size:1.00rem'>"
+          + "<span style='color:var(--muted);font-size:0.69rem;text-transform:uppercase;letter-spacing:1px'>Gastado ¢ </span>"
           + "<strong style='color:var(--sh)'>" + fmt(totalCRC) + "</strong></div>";
       if (totalUSD > 0)
-        totalesHTML += "<div style='font-size:1.07rem'>"
-          + "<span style='color:var(--muted);font-size:0.76rem;text-transform:uppercase;letter-spacing:1px'>Gastado $ </span>"
+        totalesHTML += "<div style='font-size:1.00rem'>"
+          + "<span style='color:var(--muted);font-size:0.69rem;text-transform:uppercase;letter-spacing:1px'>Gastado $ </span>"
           + "<strong style='color:#60a5fa'>" + fmtUSD(totalUSD) + "</strong></div>";
-      totalesHTML += "<div style='font-size:0.97rem;color:var(--muted);margin-left:auto'>"
+      totalesHTML += "<div style='font-size:0.90rem;color:var(--muted);margin-left:auto'>"
         + totalCnt + " compra" + (totalCnt !== 1 ? "s" : "") + "</div>";
       totalesHTML += "</div>";
     }
@@ -1283,7 +1283,7 @@ function renderTarjetas(person) {
       + "<span class='item-card-title'>💳 " + t.nombre + "</span>"
       + "<button class='item-card-del' onclick='deleteTarjeta(" + t.id + ")' title='Eliminar'>✕</button>"
       + "</div>"
-      + "<div style='font-size:0.91rem;color:var(--muted)'>Corte el día <strong style='color:" + t.color + "'>" + t.diaCorte + "</strong> de cada mes</div>"
+      + "<div style='font-size:0.84rem;color:var(--muted)'>Corte el día <strong style='color:" + t.color + "'>" + t.diaCorte + "</strong> de cada mes</div>"
       + totalesHTML
       + pagarBtn;
     list.appendChild(card);
@@ -1333,8 +1333,8 @@ function pagarTarjeta(tarjetaId, nombre, person) {
   panel.id = panelId;
   panel.style.cssText = "background:var(--surface);border:1.5px solid var(--a1);border-radius:10px;padding:14px 16px;margin-top:8px";
   panel.innerHTML =
-    "<div style='font-size:0.91rem;color:var(--text);margin-bottom:10px;font-weight:700'>¿Qué corte deseas pagar?</div>"
-    + "<div style='font-size:0.86rem;color:var(--muted);margin-bottom:10px'>"
+    "<div style='font-size:0.84rem;color:var(--text);margin-bottom:10px;font-weight:700'>¿Qué corte deseas pagar?</div>"
+    + "<div style='font-size:0.79rem;color:var(--muted);margin-bottom:10px'>"
     + "Solo se liberarán los gastos del corte seleccionado.<br>"
     + "Los demás cortes quedan intactos.</div>"
     + "<div class='fg' style='margin-bottom:12px'>"
@@ -1827,8 +1827,8 @@ function renderSavings(person) {
         <div class="item-progress-fill" style="width:${pct}%;background:${fill}"></div>
       </div>
       <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input type="number" id="aporte-inp-${s.id}" class="fg" style="flex:1;min-width:120px;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-family:inherit;font-size:0.91rem" placeholder="Nuevo aporte ¢" min="0" step="1000"/>
-        <button class="btn-add" style="padding:6px 14px;font-size:1.07rem" onclick="addAporte(${s.id}, ${person})">+ Aporte</button>
+        <input type="number" id="aporte-inp-${s.id}" class="fg" style="flex:1;min-width:120px;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-family:inherit;font-size:0.84rem" placeholder="Nuevo aporte ¢" min="0" step="1000"/>
+        <button class="btn-add" style="padding:6px 14px;font-size:1.00rem" onclick="addAporte(${s.id}, ${person})">+ Aporte</button>
       </div>
     `;
     list.appendChild(card);
@@ -1878,12 +1878,12 @@ function renderDebts(person) {
 
       <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:0.97rem;color:var(--muted)">Saldo inicial</span>
-          <span style="font-size:1.07rem;color:var(--text)">${fmtAmt(d.total)}${fmtSec(d.total)}</span>
+          <span style="font-size:0.90rem;color:var(--muted)">Saldo inicial</span>
+          <span style="font-size:1.00rem;color:var(--text)">${fmtAmt(d.total)}${fmtSec(d.total)}</span>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:0.97rem;color:var(--muted)">Saldo restante</span>
-          <span style="font-size:1.07rem;color:${done ? "var(--saving)" : "var(--warn)"}">${done ? "✅ Saldada" : fmtAmt(pending) + fmtSec(pending)}</span>
+          <span style="font-size:0.90rem;color:var(--muted)">Saldo restante</span>
+          <span style="font-size:1.00rem;color:${done ? "var(--saving)" : "var(--warn)"}">${done ? "✅ Saldada" : fmtAmt(pending) + fmtSec(pending)}</span>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:1.12rem;color:var(--muted);font-weight:700">Cuota mensual</span>
@@ -1897,7 +1897,7 @@ function renderDebts(person) {
       <div class="item-progress" style="margin-bottom:6px">
         <div class="item-progress-fill" style="width:${pendingPct}%;background:${barColor}"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:1.07rem;color:var(--muted);margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:1.00rem;color:var(--muted);margin-bottom:10px">
         <span>Pagado: ${fmtAmt(d.paid_so_far)}</span>
         <span>${(100 - pendingPct).toFixed(0)}% cancelado</span>
       </div>
@@ -2156,7 +2156,7 @@ function renderChart(person, income, totalSaving, totalDebt, totalExpense) {
       <div class="chart-legend-dot" style="background:${sg.color}"></div>
       <span class="chart-legend-lbl">${sg.label}</span>
       <span class="chart-legend-val">${fmt(sg.value)}</span>
-      <span style="font-size:0.79rem;color:${sg.color};margin-left:4px">${pct}%</span>
+      <span style="font-size:0.72rem;color:${sg.color};margin-left:4px">${pct}%</span>
     </div>`;
   }).join("");
 }
@@ -2260,7 +2260,7 @@ function buildBudgetRow(person) {
     </div>
     <div class="fg-budget">
       <label>🏦 Ahorro · ${qLabel}
-        <span style="font-size:0.97rem;color:var(--saving);font-weight:normal"> — descuenta del salario</span>
+        <span style="font-size:0.90rem;color:var(--saving);font-weight:normal"> — descuenta del salario</span>
       </label>
       <div class="prefix"><span>¢</span>
         <input type="number" id="b-sav-${person}" value="${savVal}"
@@ -2269,7 +2269,7 @@ function buildBudgetRow(person) {
     </div>
     <div class="fg-budget">
       <label>💳 Deudas · ${qLabel}
-        <span style="font-size:0.97rem;color:var(--debt);font-weight:normal"> — informativo, no afecta saldo</span>
+        <span style="font-size:0.90rem;color:var(--debt);font-weight:normal"> — informativo, no afecta saldo</span>
       </label>
       <div class="prefix"><span>¢</span>
         <input type="number" id="b-debt-${person}" value="${debtVal}"
@@ -2997,14 +2997,14 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
       const tUSD = usdAll.reduce((s,e)=>s+e.amount,0);
       if (tCRC > 0) n.push(fmt(tCRC));
       if (tUSD > 0) n.push(fmtUSD(tUSD));
-      if (n.length) displayTot += ` <span style="font-size:0.76rem;color:var(--muted)">(${n.join(" + ")} total)</span>`;
+      if (n.length) displayTot += ` <span style="font-size:0.69rem;color:var(--muted)">(${n.join(" + ")} total)</span>`;
     }
   } else {
     const tCRC = crcAll.reduce((s,e)=>s+(e.amountCRC||e.amount),0);
     const tUSD = usdAll.reduce((s,e)=>s+e.amount,0);
     const parts = [];
-    if (tCRC > 0) parts.push(`${fmt(tCRC/2)} <span style="font-size:0.76rem;color:var(--muted)">(${fmt(tCRC)})</span>`);
-    if (tUSD > 0) parts.push(`<span style="color:#60a5fa">${fmtUSD(tUSD/2)}</span> <span style="font-size:0.76rem;color:var(--muted)">(${fmtUSD(tUSD)})</span>`);
+    if (tCRC > 0) parts.push(`${fmt(tCRC/2)} <span style="font-size:0.69rem;color:var(--muted)">(${fmt(tCRC)})</span>`);
+    if (tUSD > 0) parts.push(`<span style="color:#60a5fa">${fmtUSD(tUSD/2)}</span> <span style="font-size:0.69rem;color:var(--muted)">(${fmtUSD(tUSD)})</span>`);
     displayTot = parts.join(` <span style="color:var(--muted);font-size:0.7rem"> + </span> `) || fmt(0);
   }
 
@@ -3059,7 +3059,7 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
         const rawCRC = isShared ? (e.amountCRC||e.amount*tc)/2 : (e.amountCRC||e.amount*tc);
         const totPart = isShared ? `<span class="shared-total">(${fmtUSD(e.amount)})</span>` : "";
         amtDisplay = `<span class="shared-display" style="color:#60a5fa">${fmtUSD(raw)}</span>${totPart}`
-          + `<br><span style="font-size:0.76rem;color:var(--muted)">≈ ${fmt(rawCRC)}</span>`;
+          + `<br><span style="font-size:0.69rem;color:var(--muted)">≈ ${fmt(rawCRC)}</span>`;
       } else if (isShared) {
         amtDisplay = `<span class="shared-display">${fmt(e.amount/2)}</span><span class="shared-total">(${fmt(e.amount)})</span>`;
       } else {
