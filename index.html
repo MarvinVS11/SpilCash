@@ -1660,8 +1660,11 @@ async function addAporte(savId, person) {
   const newAporte = sav.aporte + amount;
   const { error } = await db.from(SAVINGS_TABLE).update({ aporte: newAporte }).eq("id", savId);
   if (error) { showToast("Error: " + (error.message||""), "err"); return; }
-  showToast("✓ Aporte registrado", "ok");
+  // Actualizar local inmediatamente sin esperar el realtime
+  sav.aporte = newAporte;
+  showToast("\u2713 Aporte registrado", "ok");
   document.getElementById(`aporte-inp-${savId}`).value = "";
+  renderAll();
 }
 
 async function deleteSaving(id) {
@@ -1750,7 +1753,10 @@ async function pagarCuota(debtId) {
   const newPaid = Math.min(debt.paid_so_far + debt.cuota, debt.total);
   const { error } = await db.from(DEBTS_TABLE).update({ paid_so_far: newPaid }).eq("id", debtId);
   if (error) { showToast("Error: " + (error.message||""), "err"); return; }
-  showToast("✓ Cuota registrada", "ok");
+  // Actualizar local inmediatamente sin esperar el realtime
+  debt.paid_so_far = newPaid;
+  showToast("\u2713 Cuota registrada", "ok");
+  renderAll();
 }
 
 async function deleteDebt(id) {
