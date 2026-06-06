@@ -79,7 +79,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .q-pill.active { background: rgba(62,207,170,0.15); border-color: var(--sh); color: var(--sh); }
 
 /* ── Toggle vista calendario/corte ── */
-/* ── Toggle vista calendario/corte — estilo pastilla ── */
+/* ── Toggle vista calendario/corte — pastilla deslizable ── */
 .vista-toggle {
   display: inline-flex;
   align-items: center;
@@ -89,22 +89,32 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   padding: 3px;
   gap: 0;
   margin-bottom: 10px;
+  position: relative;
+}
+/* Indicador deslizable que se mueve debajo del texto */
+.vista-indicator {
+  position: absolute;
+  top: 3px; left: 3px;
+  height: calc(100% - 6px);
+  border-radius: 24px;
+  background: var(--ok);
+  box-shadow: 0 0 8px var(--ok), 0 0 16px rgba(62,207,170,0.35);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
 }
 .vista-lbl {
   font-size: 0.77rem; font-weight: 900;
-  color: var(--text); white-space: nowrap;
-  cursor: pointer; padding: 6px 16px;
-  border-radius: 24px;
-  transition: background 0.22s, color 0.22s, box-shadow 0.22s;
+  white-space: nowrap; cursor: pointer;
+  padding: 6px 16px; border-radius: 24px;
+  transition: color 0.25s;
+  position: relative; z-index: 1;
   -webkit-text-stroke: 0.3px currentColor;
   user-select: none;
 }
-.vista-lbl.active {
-  background: var(--ok);
-  color: #0d1a16;
-  box-shadow: 0 0 8px var(--ok), 0 0 16px rgba(62,207,170,0.35);
-}
-/* Ocultar el checkbox — ya no se usa */
+.vista-lbl.active  { color: #0d1a16; }
+.vista-lbl.inactive { color: var(--text); }
 .vista-switch-wrap { display: none; }
 .vista-btn         { display: none; }
 
@@ -743,8 +753,9 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Acordeón -->
       <p class="sec">/ Mis Gastos del Período</p>
       <div class="vista-toggle" id="vista-toggle-1">
+        <div class="vista-indicator" id="vista-ind-1"></div>
         <span class="vista-lbl active" id="vista-cal-1" onclick="setVista(1,'calendario')">📅 Calendario</span>
-        <span class="vista-lbl" id="vista-cor-1" onclick="setVista(1,'corte')">💳 Corte</span>
+        <span class="vista-lbl inactive" id="vista-cor-1" onclick="setVista(1,'corte')">💳 Corte</span>
       </div>
       <div class="categories" id="priv-cats-p1"></div>
     </div>
@@ -877,8 +888,9 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <!-- Acordeón -->
       <p class="sec">/ Mis Gastos del Período</p>
       <div class="vista-toggle" id="vista-toggle-2">
+        <div class="vista-indicator" id="vista-ind-2"></div>
         <span class="vista-lbl active" id="vista-cal-2" onclick="setVista(2,'calendario')">📅 Calendario</span>
-        <span class="vista-lbl" id="vista-cor-2" onclick="setVista(2,'corte')">💳 Corte</span>
+        <span class="vista-lbl inactive" id="vista-cor-2" onclick="setVista(2,'corte')">💳 Corte</span>
       </div>
       <div class="categories" id="priv-cats-p2"></div>
     </div>
@@ -1098,13 +1110,26 @@ function setVista(person, modo) {
   vistaPriv[person] = modo;
   const isCorte = modo === "corte";
 
-  // Labels: activo el seleccionado
   const calLbl = document.getElementById(`vista-cal-${person}`);
   const corLbl = document.getElementById(`vista-cor-${person}`);
-  if (calLbl) calLbl.classList.toggle("active", !isCorte);
-  if (corLbl) corLbl.classList.toggle("active",  isCorte);
+  const ind    = document.getElementById(`vista-ind-${person}`);
 
-  // En modo corte forzar "mes completo" (q=0) ya que el corte es mensual
+  // Texto activo/inactivo
+  if (calLbl) { calLbl.className = "vista-lbl " + (isCorte ? "inactive" : "active"); }
+  if (corLbl) { corLbl.className = "vista-lbl " + (isCorte ? "active"   : "inactive"); }
+
+  // Deslizar el indicador al elemento activo
+  if (ind) {
+    const target = isCorte ? corLbl : calLbl;
+    if (target) {
+      ind.style.width     = target.offsetWidth  + "px";
+      ind.style.transform = isCorte
+        ? `translateX(${calLbl.offsetWidth}px)`
+        : "translateX(0)";
+    }
+  }
+
+  // En modo corte forzar "mes completo" (q=0)
   if (isCorte) {
     privQ[person] = 0;
     [0,1,2].forEach(n => {
@@ -1113,6 +1138,18 @@ function setVista(person, modo) {
     });
   }
   renderPrivate(person);
+}
+
+/** Inicializa el indicador en su posición correcta (llamar tras renderizar) */
+function initVistaIndicators() {
+  [1, 2].forEach(person => {
+    const ind    = document.getElementById(`vista-ind-${person}`);
+    const calLbl = document.getElementById(`vista-cal-${person}`);
+    if (ind && calLbl) {
+      ind.style.width     = calLbl.offsetWidth + "px";
+      ind.style.transform = "translateX(0)";
+    }
+  });
 }
 
 /**
@@ -3145,6 +3182,8 @@ function renderAll() {
   renderPublic();
   if (loggedIn[1]) renderPrivate(1);
   if (loggedIn[2]) renderPrivate(2);
+  // Posicionar indicadores del toggle tras cada render
+  requestAnimationFrame(initVistaIndicators);
 }
 
 initMonthSelects();
