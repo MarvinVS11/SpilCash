@@ -79,45 +79,34 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .q-pill.active { background: rgba(62,207,170,0.15); border-color: var(--sh); color: var(--sh); }
 
 /* ── Toggle vista calendario/corte ── */
+/* ── Toggle vista calendario/corte — estilo pastilla ── */
 .vista-toggle {
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 10px; flex-wrap: nowrap;
+  display: inline-flex;
+  align-items: center;
+  background: var(--card2);
+  border: 1.5px solid var(--ok);
+  border-radius: 30px;
+  padding: 3px;
+  gap: 0;
+  margin-bottom: 10px;
 }
 .vista-lbl {
-  font-size: 0.77rem; font-weight: 900; color: var(--muted); white-space: nowrap;
-  transition: color 0.25s; cursor: pointer;
-  font-synthesis: weight; -webkit-text-stroke: 0.3px currentColor;
+  font-size: 0.77rem; font-weight: 900;
+  color: var(--text); white-space: nowrap;
+  cursor: pointer; padding: 6px 16px;
+  border-radius: 24px;
+  transition: background 0.22s, color 0.22s, box-shadow 0.22s;
+  -webkit-text-stroke: 0.3px currentColor;
+  user-select: none;
 }
-.vista-lbl.active { color: var(--ok); }
-.vista-switch-wrap {
-  position: relative; flex-shrink: 0;
-  width: 46px; height: 24px; cursor: pointer;
-}
-.vista-switch-wrap input {
-  opacity: 0; width: 0; height: 0; position: absolute;
-}
-.vista-switch-track {
-  position: absolute; inset: 0;
-  background: var(--border); border-radius: 12px;
-  transition: background 0.25s, box-shadow 0.25s;
-}
-.vista-switch-wrap input:checked ~ .vista-switch-track {
+.vista-lbl.active {
   background: var(--ok);
-  box-shadow: 0 0 8px var(--ok), 0 0 16px rgba(62,207,170,0.4);
+  color: #0d1a16;
+  box-shadow: 0 0 8px var(--ok), 0 0 16px rgba(62,207,170,0.35);
 }
-.vista-switch-track::after {
-  content: ""; position: absolute;
-  width: 18px; height: 18px; border-radius: 50%;
-  background: #fff; top: 3px; left: 3px;
-  transition: transform 0.25s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}
-.vista-switch-wrap input:checked ~ .vista-switch-track::after {
-  transform: translateX(22px);
-}
-.vista-btn {
-  display: none;
-}
+/* Ocultar el checkbox — ya no se usa */
+.vista-switch-wrap { display: none; }
+.vista-btn         { display: none; }
 
 /* ── Badge de corte de tarjeta ── */
 .corte-badge {
@@ -755,10 +744,6 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <p class="sec">/ Mis Gastos del Período</p>
       <div class="vista-toggle" id="vista-toggle-1">
         <span class="vista-lbl active" id="vista-cal-1" onclick="setVista(1,'calendario')">📅 Calendario</span>
-        <label class="vista-switch-wrap">
-          <input type="checkbox" id="vista-sw-1" onchange="setVista(1, this.checked ? 'corte' : 'calendario')"/>
-          <div class="vista-switch-track"></div>
-        </label>
         <span class="vista-lbl" id="vista-cor-1" onclick="setVista(1,'corte')">💳 Corte</span>
       </div>
       <div class="categories" id="priv-cats-p1"></div>
@@ -893,10 +878,6 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <p class="sec">/ Mis Gastos del Período</p>
       <div class="vista-toggle" id="vista-toggle-2">
         <span class="vista-lbl active" id="vista-cal-2" onclick="setVista(2,'calendario')">📅 Calendario</span>
-        <label class="vista-switch-wrap">
-          <input type="checkbox" id="vista-sw-2" onchange="setVista(2, this.checked ? 'corte' : 'calendario')"/>
-          <div class="vista-switch-track"></div>
-        </label>
         <span class="vista-lbl" id="vista-cor-2" onclick="setVista(2,'corte')">💳 Corte</span>
       </div>
       <div class="categories" id="priv-cats-p2"></div>
@@ -1116,10 +1097,6 @@ function setPrivQ(person, q) {
 function setVista(person, modo) {
   vistaPriv[person] = modo;
   const isCorte = modo === "corte";
-
-  // Sincronizar checkbox
-  const sw = document.getElementById(`vista-sw-${person}`);
-  if (sw) sw.checked = isCorte;
 
   // Labels: activo el seleccionado
   const calLbl = document.getElementById(`vista-cal-${person}`);
