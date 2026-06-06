@@ -1826,21 +1826,25 @@ function renderDebts(person) {
   myDebts.forEach(d => {
     const isUSD    = d.moneda === "USD";
     const tc       = d.tipo_cambio || 1;
-    // Todos los cálculos de progreso en la moneda original
     const pending  = Math.max(0, d.total - d.paid_so_far);
-    const pct      = d.total > 0 ? Math.min(100, (d.paid_so_far / d.total) * 100) : 0;
     const done     = pending === 0;
-    const fill     = done ? "var(--saving)" : pct > 60 ? "var(--sh)" : pct > 30 ? "var(--warn)" : "var(--debt)";
 
-    // Formato principal según moneda
-    const fmtAmt   = n => isUSD ? fmtUSD(n) : fmt(n);
-    const fmtSec   = n => isUSD ? `≈ ${fmt(n * tc)}` : "";
-    const badge    = isUSD
+    // Barra inversa: muestra cuánto FALTA por pagar (100% → 0%)
+    const pendingPct = d.total > 0 ? Math.min(100, (pending / d.total) * 100) : 0;
+    // Color: rojo al inicio, amarillo a mitad, verde al terminar
+    const barColor = done
+      ? "var(--saving)"
+      : pendingPct < 30 ? "var(--saving)"
+      : pendingPct < 60 ? "var(--warn)"
+      : "var(--debt)";
+
+    const fmtAmt = n => isUSD ? fmtUSD(n) : fmt(n);
+    const fmtSec = n => isUSD ? ` ≈ ${fmt(n * tc)}` : "";
+    const badge  = isUSD
       ? `<span class="currency-badge usd">USD</span>`
       : `<span class="currency-badge crc">CRC</span>`;
-    const cuotaCRC = isUSD ? d.cuota * tc : d.cuota;
-    const tcNote   = isUSD
-      ? `<div class="tc-note">Tipo de cambio: ¢${tc.toLocaleString()} por $1 · Cuota en ¢: ${fmt(cuotaCRC)}</div>`
+    const tcNote = isUSD
+      ? `<div class="tc-note">Tipo de cambio: ¢${tc.toLocaleString()} por $1 · Cuota en ¢: ${fmt(d.cuota * tc)}</div>`
       : "";
 
     const card = document.createElement("div");
@@ -1850,33 +1854,34 @@ function renderDebts(person) {
         <span class="item-card-title">💳 ${d.desc} ${badge}</span>
         <button class="item-card-del" onclick="deleteDebt(${d.id})" title="Eliminar">✕</button>
       </div>
-      <div class="item-amounts">
-        <div class="item-amt-block">
-          <span class="item-amt-lbl">Total deuda</span>
-          <span class="item-amt-val dtot">${fmtAmt(d.total)}</span>
-          ${isUSD ? `<span style="font-size:0.6rem;color:var(--muted)">${fmtSec(d.total)}</span>` : ""}
+
+      <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:0.70rem;color:var(--muted)">Saldo inicial</span>
+          <span style="font-size:0.82rem;color:var(--text)">${fmtAmt(d.total)}${fmtSec(d.total)}</span>
         </div>
-        <div class="item-amt-block">
-          <span class="item-amt-lbl">Cuota qnal.</span>
-          <span class="item-amt-val dqta">${fmtAmt(d.cuota)}</span>
-          ${isUSD ? `<span style="font-size:0.6rem;color:var(--muted)">${fmtSec(d.cuota)}</span>` : ""}
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:0.70rem;color:var(--muted)">Saldo restante</span>
+          <span style="font-size:0.82rem;color:${done ? "var(--saving)" : "var(--warn)"}">${done ? "✅ Saldada" : fmtAmt(pending) + fmtSec(pending)}</span>
         </div>
-        <div class="item-amt-block">
-          <span class="item-amt-lbl">Pendiente</span>
-          <span class="item-amt-val dpend ${done ? "ok" : ""}">${done ? "✅ Saldada" : fmtAmt(pending)}</span>
-          ${isUSD && !done ? `<span style="font-size:0.6rem;color:var(--muted)">${fmtSec(pending)}</span>` : ""}
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:0.75rem;color:var(--muted);font-weight:700">Cuota mensual</span>
+          <span style="font-size:0.88rem;font-weight:700;color:var(--debt)">${fmtAmt(d.cuota)}${fmtSec(d.cuota)}</span>
         </div>
       </div>
-      <div class="item-progress">
-        <div class="item-progress-fill" style="width:${pct}%;background:${fill}"></div>
-      </div>
+
       ${tcNote}
-      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <span style="font-size:0.72rem;color:var(--muted);flex:1">
-          Pagado: ${fmtAmt(d.paid_so_far)} de ${fmtAmt(d.total)} (${pct.toFixed(0)}%)
-        </span>
-        ${!done ? `<button class="btn-add" style="padding:6px 14px;font-size:0.68rem;background:var(--debt)" onclick="pagarCuota(${d.id})">✓ Pagar cuota</button>` : ""}
+
+      <!-- Barra inversa: llena = deuda completa, vacía = saldada -->
+      <div class="item-progress" style="margin-bottom:6px">
+        <div class="item-progress-fill" style="width:${pendingPct}%;background:${barColor}"></div>
       </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:var(--muted);margin-bottom:10px">
+        <span>Pagado: ${fmtAmt(d.paid_so_far)}</span>
+        <span>${(100 - pendingPct).toFixed(0)}% cancelado</span>
+      </div>
+
+      ${!done ? `<button class="btn-add" style="padding:6px 14px;font-size:0.75rem;background:var(--debt);width:100%" onclick="pagarCuota(${d.id})">✓ Pagar cuota</button>` : ""}
     `;
     list.appendChild(card);
   });
