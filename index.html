@@ -508,6 +508,9 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 
 /* ── Responsive ── */
 @media (max-width: 520px) {
+  /* Escalar la raíz sube TODOS los rem proporcionalmente */
+  html { font-size: 17px; }
+
   header { padding: 10px 11px; }
   main   { padding: 12px 9px 60px; }
 
@@ -515,50 +518,28 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
-  /* Escalar fuentes para pantallas pequeñas */
-  body { font-size: 14px; }
-
-  nav button        { font-size: 0.68rem; padding: 5px 10px; }
-  .sec              { font-size: 0.64rem; }
-  .q-pill           { font-size: 0.64rem; padding: 3px 8px; }
-  .vista-btn        { font-size: 0.64rem; padding: 4px 9px; }
-  .sc .lbl          { font-size: 0.58rem; }
-  .sc .amt          { font-size: clamp(0.88rem, 4vw, 1.3rem); }
-  .fg label         { font-size: 0.60rem; }
-  .fg input, .fg select { font-size: 0.78rem; }
-  .btn-add          { font-size: 0.74rem; padding: 7px 14px; }
-  .add-form-title   { font-size: 0.64rem; }
-  .expense-table    { font-size: 0.74rem; }
-  .expense-table th { font-size: 0.60rem; }
-  .cat-nm           { font-size: 0.76rem; }
-  .cat-tot          { font-size: 0.76rem; }
-  .cat-cnt          { font-size: 0.60rem; }
-  .item-card-title  { font-size: 0.84rem; }
-  .item-amt-lbl     { font-size: 0.60rem; }
-  .item-amt-val     { font-size: 0.96rem; }
-  .saldo-bar .saldo-num { font-size: 1.1rem; }
-  .mod-header-title { font-size: 0.68rem; }
-  .btn-add-item     { font-size: 0.68rem; padding: 4px 10px; }
-  .cuota-summary    { font-size: 0.76rem; }
-  .chart-legend-lbl { font-size: 0.72rem; }
-  .chart-legend-val { font-size: 0.72rem; }
-  .priv-head h2     { font-size: 0.82rem; }
-  .balance-box p    { font-size: 0.80rem; }
-  .bk-card .bk-amt  { font-size: 1.1rem; }
-  .period-bar .month-select { font-size: 0.74rem; }
-  .budget-row .fg-budget input { font-size: 0.82rem; }
+  /* Ajustes puntuales para que no se desborde en mobile */
+  .add-grid           { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+  .expense-table      { font-size: 0.80rem; }
+  .item-amounts       { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .edit-modal-grid    { gap: 4px; }
+  .edit-modal-grid .fg.fg-desc  { min-width: 90px; }
+  .edit-modal-grid .fg.fg-amt   { width: 70px; }
+  .edit-modal-grid .fg.fg-mon   { width: 78px; }
+  .edit-modal-grid .fg.fg-date  { width: 100px; }
+  .edit-modal-grid .fg.fg-cat   { width: 95px; }
+  .edit-modal-grid .fg.fg-type  { width: 78px; }
 }
 
 @media (max-width: 380px) {
+  html { font-size: 15px; }
+
   .summary-grid, .breakdown-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
-  /* Extra reducción para pantallas muy pequeñas */
-  nav button     { font-size: 0.62rem; padding: 4px 8px; }
-  .sc .amt       { font-size: clamp(0.82rem, 3.8vw, 1.1rem); }
-  .item-amt-val  { font-size: 0.88rem; }
-  .expense-table { font-size: 0.68rem; }
+  .expense-table { font-size: 0.75rem; }
+  .sc .amt       { font-size: clamp(0.9rem, 4vw, 1.3rem); }
 }
 </style>
 </head>
