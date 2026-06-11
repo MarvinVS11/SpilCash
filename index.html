@@ -1062,6 +1062,23 @@ function filterByPeriod(arr, month, q) {
 }
 
 /**
+ * Filtro para CÁLCULO DE SALDO:
+ * - Gastos con tarjeta (mesCorte definido) → se asignan al mes de corte
+ * - Gastos en efectivo → se asignan por fecha real
+ * Este filtro aplica SIEMPRE para los cálculos, independiente del modo de vista.
+ * La quincena solo aplica a gastos en efectivo (los de tarjeta son mensuales).
+ */
+function filterForSaldo(arr, month, q) {
+  return arr.filter(e => {
+    const ref = e.mesCorte ? e.mesCorte : (e.date || "").slice(0, 7);
+    if (ref !== month) return false;
+    // Quincena solo aplica a gastos sin tarjeta
+    if (e.mesCorte) return true;
+    return q === 0 || quincena(e.date) === q;
+  });
+}
+
+/**
  * Filtra gastos de una persona según el modo de vista:
  *  - 'calendario': por fecha real (igual que filterByPeriod, con quincena)
  *  - 'corte': por mes_corte de la tarjeta. Las compras con tarjeta caen
@@ -2669,17 +2686,20 @@ function debtAmountDisplay(amount, moneda, tipo_cambio) {
  * FÓRMULA: saldo = salario − gastos − cuota_ahorros − cuota_deudas
  *
  * REGLAS:
- *  • Cuotas de ahorro y de deuda se descuentan del salario (Regla 3)
- *  • Los gastos también reducen el saldo
- *  • Las deudas totales son informativas (no el monto de la cuota, sino el saldo pendiente)
- *  • Cada quincena es independiente
+ *  • Gastos con tarjeta → se descuentan en su mes de CORTE (cuando se pagan)
+ *  • Gastos en efectivo → se descuentan en su mes de fecha real
+ *  • Cuotas de ahorro y deuda se descuentan si ya hay al menos un pago
  */
 function calcSaldo(person, arr, month, q) {
-  const b        = getBudgetForPeriod(person, month, q);
-  const myInd    = arr.filter(e => e.type === "p" + person).reduce((s, e) => s + (e.amountCRC||e.amount), 0);
-  const mySh     = arr.filter(e => e.type === "shared").reduce((s, e) => s + (e.amountCRC||e.amount), 0) / 2;
-  const cuotaSav = calcCuotaAhorro(person);
-  const cuotaDebt= calcCuotaDeuda(person);
+  const b = getBudgetForPeriod(person, month, q);
+  // Usar filterForSaldo para que gastos con tarjeta caigan en su mes de corte
+  const saldoArr  = filterForSaldo(arr, month, q).filter(e => e.person === person);
+  // Sumar también los gastos compartidos filtrados por corte
+  const saldoSh   = filterForSaldo(arr, month, q).filter(e => e.type === "shared");
+  const myInd     = saldoArr.filter(e => e.type === "p" + person).reduce((s, e) => s + (e.amountCRC||e.amount), 0);
+  const mySh      = saldoSh.reduce((s, e) => s + (e.amountCRC||e.amount), 0) / 2;
+  const cuotaSav  = calcCuotaAhorro(person);
+  const cuotaDebt = calcCuotaDeuda(person);
   return b.income - myInd - mySh - cuotaSav - cuotaDebt;
 }
 
@@ -2774,15 +2794,18 @@ function renderPrivate(person) {
   const q     = privQ[person];
   const label = periodLabel(month, q);
 
-  const filtered = filterByPeriod(expenses, month, q);
-  const mine     = filtered.filter(e => e.person === person);
-  const myInd    = filtered.filter(e => e.type === "p"+person).reduce((s,e) => s+(e.amountCRC||e.amount), 0);
-  const shTotal  = filtered.filter(e => e.type === "shared").reduce((s,e) => s+(e.amountCRC||e.amount), 0);
-  const myShare  = shTotal / 2;
-  const b        = getBudgetForPeriod(person, month, q);
-  const saldo    = calcSaldo(person, filtered, month, q);
-  const myDebt   = calcDebt(person, filtered);
-  const debtOver = myDebt > b.income && b.income > 0;
+  const filtered    = filterByPeriod(expenses, month, q);
+  const mine        = filtered.filter(e => e.person === person);
+  // Para cálculos financieros (saldo, gráfico) usar filterForSaldo
+  // que asigna gastos con tarjeta a su mes de corte
+  const forSaldo    = filterForSaldo(expenses, month, q);
+  const myInd       = forSaldo.filter(e => e.type === "p"+person).reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+  const shTotal     = forSaldo.filter(e => e.type === "shared").reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+  const myShare     = shTotal / 2;
+  const b           = getBudgetForPeriod(person, month, q);
+  const saldo       = calcSaldo(person, expenses, month, q);
+  const myDebt      = calcDebt(person, filtered);
+  const debtOver    = myDebt > b.income && b.income > 0;
 
   // Tarjetas resumen
   document.getElementById("pi-inc"+person).textContent  = fmt(b.income);
