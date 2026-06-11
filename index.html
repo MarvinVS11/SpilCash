@@ -452,8 +452,8 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   border-radius: var(--r); padding: 18px 16px; margin-bottom: 16px;
   display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
 }
-.chart-canvas-wrap { flex-shrink: 0; position: relative; width: 160px; height: 160px; }
-.chart-canvas-wrap canvas { width: 160px !important; height: 160px !important; cursor: pointer; }
+.chart-canvas-wrap { flex-shrink: 0; position: relative; width: 176px; height: 176px; padding: 8px; box-sizing: border-box; }
+.chart-canvas-wrap canvas { width: 160px !important; height: 160px !important; cursor: pointer; display: block; }
 
 /* Tooltip del gráfico */
 .chart-tooltip {
@@ -2113,12 +2113,16 @@ function drawPieChart(canvasId, segments) {
   const ctx  = canvas.getContext("2d");
   const dpr  = window.devicePixelRatio || 1;
   const size = 160;
-  canvas.width  = size * dpr;
-  canvas.height = size * dpr;
+  const margin = 10; // espacio para el explode
+  const total_size = size + margin * 2;
+  canvas.width  = total_size * dpr;
+  canvas.height = total_size * dpr;
+  canvas.style.width  = total_size + "px";
+  canvas.style.height = total_size + "px";
   ctx.scale(dpr, dpr);
 
-  const cx    = size / 2;
-  const cy    = size / 2;
+  const cx    = total_size / 2;
+  const cy    = total_size / 2;
   const r     = size / 2 - 14;
   const total = segments.reduce((s, sg) => s + sg.value, 0);
 
