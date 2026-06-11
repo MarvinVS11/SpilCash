@@ -1276,17 +1276,24 @@ async function addTarjeta(person) {
   const color  = document.getElementById(`tj-color-${person}`)?.value || "#5b8aff";
   if (!nombre)                        { showToast("Ingresa un nombre", "err"); return; }
   if (isNaN(corte) || corte < 1 || corte > 31) { showToast("Día de corte inválido (1-31)", "err"); return; }
-  const { error } = await db.from(TARJETAS_TABLE).insert({ person, nombre, dia_corte: corte, color });
+  const { data, error } = await db.from(TARJETAS_TABLE).insert({ person, nombre, dia_corte: corte, color }).select().single();
   if (error) { showToast("Error: " + (error.message||""), "err"); return; }
-  showToast("✓ Tarjeta guardada", "ok");
+  // Actualizar local inmediatamente
+  const tempId = data?.id || -(Date.now());
+  if (!tarjetas.find(t => t.id === tempId))
+    tarjetas.push({ id: tempId, person, nombre, diaCorte: corte, color });
+  showToast("\u2713 Tarjeta guardada", "ok");
   document.getElementById(`tarjeta-add-form-${person}`).innerHTML = "";
+  renderAll();
 }
 
 async function deleteTarjeta(id) {
   if (!confirm("¿Eliminar esta tarjeta? Los gastos ya registrados con ella no se borran.")) return;
   const { error } = await db.from(TARJETAS_TABLE).delete().eq("id", id);
-  if (error) showToast("Error al eliminar", "err");
-  else showToast("✓ Tarjeta eliminada", "ok");
+  if (error) { showToast("Error al eliminar", "err"); return; }
+  tarjetas = tarjetas.filter(t => t.id !== id);
+  showToast("\u2713 Tarjeta eliminada", "ok");
+  renderAll();
 }
 
 function renderTarjetas(person) {
@@ -1731,10 +1738,15 @@ async function addSaving(person) {
   const goal  = parseFloat(document.getElementById(`sav-goal-${person}`).value) || 0;
   const aporte= parseFloat(document.getElementById(`sav-aporte-${person}`).value) || 0;
   if (!desc || goal <= 0) { showToast("Ingresa descripción y objetivo", "err"); return; }
-  const { error } = await db.from(SAVINGS_TABLE).insert({ person, nombre: desc, goal, aporte });
+  const { data, error } = await db.from(SAVINGS_TABLE).insert({ person, nombre: desc, goal, aporte }).select().single();
   if (error) { showToast("Error: " + (error.message||""), "err"); return; }
-  showToast("✓ Objetivo de ahorro guardado", "ok");
+  // Actualizar local inmediatamente
+  const tempId = data?.id || -(Date.now());
+  if (!savings.find(s => s.id === tempId))
+    savings.push({ id: tempId, person, desc, goal, aporte });
+  showToast("\u2713 Objetivo de ahorro guardado", "ok");
   document.getElementById(`saving-add-form-${person}`).innerHTML = "";
+  renderAll();
 }
 
 async function addAporte(savId, person) {
@@ -1745,7 +1757,6 @@ async function addAporte(savId, person) {
   const newAporte = sav.aporte + amount;
   const { error } = await db.from(SAVINGS_TABLE).update({ aporte: newAporte }).eq("id", savId);
   if (error) { showToast("Error: " + (error.message||""), "err"); return; }
-  // Actualizar local inmediatamente sin esperar el realtime
   sav.aporte = newAporte;
   showToast("\u2713 Aporte registrado", "ok");
   document.getElementById(`aporte-inp-${savId}`).value = "";
@@ -1755,8 +1766,10 @@ async function addAporte(savId, person) {
 async function deleteSaving(id) {
   if (!confirm("¿Eliminar este objetivo de ahorro?")) return;
   const { error } = await db.from(SAVINGS_TABLE).delete().eq("id", id);
-  if (error) showToast("Error al eliminar", "err");
-  else showToast("✓ Objetivo eliminado", "ok");
+  if (error) { showToast("Error al eliminar", "err"); return; }
+  savings = savings.filter(s => s.id !== id);
+  showToast("\u2713 Objetivo eliminado", "ok");
+  renderAll();
 }
 
 // ── CRUD Deudas ────────────────────────────────────────────────
@@ -1822,14 +1835,20 @@ async function addDebt(person) {
     showToast("Ingresa el tipo de cambio", "err"); return;
   }
 
-  const { error } = await db.from(DEBTS_TABLE).insert({
+  const { data, error } = await db.from(DEBTS_TABLE).insert({
     person, nombre: desc, total, cuota, paid_so_far: 0,
     moneda,
     tipo_cambio: moneda === "USD" ? tipo_cambio : 1,
-  });
+  }).select().single();
   if (error) { showToast("Error: " + (error.message||""), "err"); return; }
+  // Actualizar local inmediatamente
+  const tempId = data?.id || -(Date.now());
+  if (!debts.find(d => d.id === tempId))
+    debts.push({ id: tempId, person, desc, total, cuota, paid_so_far: 0,
+                 moneda, tipo_cambio: moneda === "USD" ? tipo_cambio : 1 });
   showToast("\u2713 Deuda guardada", "ok");
   document.getElementById(`debt-add-form-${person}`).innerHTML = "";
+  renderAll();
 }
 
 async function pagarCuota(debtId) {
@@ -1838,7 +1857,6 @@ async function pagarCuota(debtId) {
   const newPaid = Math.min(debt.paid_so_far + debt.cuota, debt.total);
   const { error } = await db.from(DEBTS_TABLE).update({ paid_so_far: newPaid }).eq("id", debtId);
   if (error) { showToast("Error: " + (error.message||""), "err"); return; }
-  // Actualizar local inmediatamente sin esperar el realtime
   debt.paid_so_far = newPaid;
   showToast("\u2713 Cuota registrada", "ok");
   renderAll();
@@ -1847,8 +1865,10 @@ async function pagarCuota(debtId) {
 async function deleteDebt(id) {
   if (!confirm("¿Eliminar esta deuda?")) return;
   const { error } = await db.from(DEBTS_TABLE).delete().eq("id", id);
-  if (error) showToast("Error al eliminar", "err");
-  else showToast("✓ Deuda eliminada", "ok");
+  if (error) { showToast("Error al eliminar", "err"); return; }
+  debts = debts.filter(d => d.id !== id);
+  showToast("\u2713 Deuda eliminada", "ok");
+  renderAll();
 }
 
 // ── Renderizado de módulos ─────────────────────────────────────
