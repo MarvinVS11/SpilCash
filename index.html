@@ -2632,11 +2632,12 @@ function calcCuotaAhorro(person) {
 
 /**
  * Suma de cuotas de deuda de una persona.
+ * Solo descuenta la cuota si ya se realizó al menos un pago (paid_so_far > 0).
  * Las cuotas en USD se convierten a CRC usando el tipo_cambio guardado.
  */
 function calcCuotaDeuda(person) {
   return debts
-    .filter(d => d.person === person)
+    .filter(d => d.person === person && d.paid_so_far > 0)
     .reduce((sum, d) => {
       const cuotaCRC = d.moneda === "USD" ? d.cuota * d.tipo_cambio : d.cuota;
       return sum + cuotaCRC;
