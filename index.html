@@ -497,7 +497,71 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .chart-legend-lbl { color: var(--muted); flex: 1; }
 .chart-legend-val { font-weight: 700; color: var(--text); }
 
-/* ── Edición inline en la fila del gasto ── */
+/* ── Buscador de gastos ── */
+.search-bar {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 10px;
+}
+.search-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.search-input-wrap {
+  flex: 1; position: relative;
+}
+.search-input-wrap input {
+  width: 100%; background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 8px; color: var(--text); padding: 7px 32px 7px 10px;
+  font-family: inherit; font-size: 0.84rem; transition: border-color var(--tr);
+  box-sizing: border-box;
+}
+.search-input-wrap input:focus { outline: none; border-color: var(--a1); }
+.search-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 0.85rem; line-height: 1; padding: 2px;
+  display: none;
+}
+.search-clear.visible { display: block; }
+/* Switch modo fecha */
+.search-mode-wrap {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.search-mode-lbl {
+  font-size: 0.72rem; color: var(--muted); white-space: nowrap;
+  font-weight: 700; cursor: pointer; transition: color 0.2s;
+}
+.search-mode-lbl.on { color: var(--a1); }
+.search-sw {
+  position: relative; width: 36px; height: 20px; cursor: pointer; flex-shrink: 0;
+}
+.search-sw input { opacity: 0; width: 0; height: 0; position: absolute; }
+.search-sw-track {
+  position: absolute; inset: 0; background: var(--border);
+  border-radius: 10px; transition: background 0.22s;
+}
+.search-sw input:checked ~ .search-sw-track { background: var(--a1); }
+.search-sw-track::after {
+  content: ""; position: absolute; width: 14px; height: 14px;
+  border-radius: 50%; background: #fff; top: 3px; left: 3px;
+  transition: transform 0.22s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.search-sw input:checked ~ .search-sw-track::after { transform: translateX(16px); }
+/* Rango de fechas */
+.search-dates {
+  display: none; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+.search-dates.visible { display: flex; }
+.search-dates input[type="date"] {
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 8px; color: var(--text); padding: 6px 8px;
+  font-family: inherit; font-size: 0.80rem; flex: 1; min-width: 130px;
+  transition: border-color var(--tr);
+}
+.search-dates input[type="date"]:focus { outline: none; border-color: var(--a1); }
+.search-dates span { font-size: 0.75rem; color: var(--muted); }
+.search-results-lbl {
+  font-size: 0.72rem; color: var(--muted); padding: 2px 0;
+}
 .row-editing td { background: var(--surface) !important; }
 
 /* Inputs/selects inline dentro de la celda */
@@ -752,6 +816,28 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 
       <!-- Acordeón -->
       <p class="sec">/ Mis Gastos del Período</p>
+      <div class="search-bar" id="search-bar-1">
+        <div class="search-row">
+          <div class="search-input-wrap">
+            <input type="text" id="search-txt-1" placeholder="🔍 Buscar gasto…"
+                   oninput="onSearch(1)" autocomplete="off"/>
+            <button class="search-clear" id="search-clear-1" onclick="clearSearch(1)">✕</button>
+          </div>
+          <div class="search-mode-wrap">
+            <span class="search-mode-lbl" id="search-lbl-1">📅 Fecha</span>
+            <label class="search-sw">
+              <input type="checkbox" id="search-sw-1" onchange="toggleSearchMode(1)"/>
+              <div class="search-sw-track"></div>
+            </label>
+          </div>
+        </div>
+        <div class="search-dates" id="search-dates-1">
+          <input type="date" id="search-from-1" onchange="onSearch(1)"/>
+          <span>—</span>
+          <input type="date" id="search-to-1" onchange="onSearch(1)"/>
+        </div>
+        <div class="search-results-lbl" id="search-results-1"></div>
+      </div>
       <div class="vista-toggle" id="vista-toggle-1">
         <div class="vista-indicator" id="vista-ind-1"></div>
         <span class="vista-lbl active" id="vista-cal-1" onclick="setVista(1,'calendario')">📅 Calendario</span>
@@ -887,6 +973,28 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 
       <!-- Acordeón -->
       <p class="sec">/ Mis Gastos del Período</p>
+      <div class="search-bar" id="search-bar-2">
+        <div class="search-row">
+          <div class="search-input-wrap">
+            <input type="text" id="search-txt-2" placeholder="🔍 Buscar gasto…"
+                   oninput="onSearch(2)" autocomplete="off"/>
+            <button class="search-clear" id="search-clear-2" onclick="clearSearch(2)">✕</button>
+          </div>
+          <div class="search-mode-wrap">
+            <span class="search-mode-lbl" id="search-lbl-2">📅 Fecha</span>
+            <label class="search-sw">
+              <input type="checkbox" id="search-sw-2" onchange="toggleSearchMode(2)"/>
+              <div class="search-sw-track"></div>
+            </label>
+          </div>
+        </div>
+        <div class="search-dates" id="search-dates-2">
+          <input type="date" id="search-from-2" onchange="onSearch(2)"/>
+          <span>—</span>
+          <input type="date" id="search-to-2" onchange="onSearch(2)"/>
+        </div>
+        <div class="search-results-lbl" id="search-results-2"></div>
+      </div>
       <div class="vista-toggle" id="vista-toggle-2">
         <div class="vista-indicator" id="vista-ind-2"></div>
         <span class="vista-lbl active" id="vista-cal-2" onclick="setVista(2,'calendario')">📅 Calendario</span>
@@ -987,9 +1095,88 @@ const privQ         = { 1: 1, 2: 1 };
 const loggedIn      = { 1: false, 2: false };
 const PAGES         = ["public", "p1", "p2"];
 
+// Estado de búsqueda por usuario
+const searchState = {
+  1: { text: "", byDate: false, from: "", to: "" },
+  2: { text: "", byDate: false, from: "", to: "" },
+};
+
+function toggleSearchMode(person) {
+  const sw  = document.getElementById("search-sw-" + person);
+  const lbl = document.getElementById("search-lbl-" + person);
+  const dts = document.getElementById("search-dates-" + person);
+  const txt = document.getElementById("search-txt-" + person);
+  const on  = sw.checked;
+  searchState[person].byDate = on;
+  if (lbl) lbl.classList.toggle("on", on);
+  if (dts) dts.classList.toggle("visible", on);
+  if (txt) txt.disabled = on;
+  if (on) {
+    // Limpiar texto al activar modo fecha
+    searchState[person].text = "";
+    if (txt) txt.value = "";
+    document.getElementById("search-clear-" + person)?.classList.remove("visible");
+  } else {
+    // Limpiar fechas al desactivar
+    searchState[person].from = "";
+    searchState[person].to   = "";
+    const f = document.getElementById("search-from-" + person);
+    const t = document.getElementById("search-to-"   + person);
+    if (f) f.value = "";
+    if (t) t.value = "";
+  }
+  onSearch(person);
+}
+
+function onSearch(person) {
+  const st  = searchState[person];
+  const txt = document.getElementById("search-txt-"  + person);
+  const clr = document.getElementById("search-clear-" + person);
+  if (!st.byDate) {
+    st.text = txt?.value.trim().toLowerCase() || "";
+    if (clr) clr.classList.toggle("visible", st.text.length > 0);
+  } else {
+    st.from = document.getElementById("search-from-" + person)?.value || "";
+    st.to   = document.getElementById("search-to-"   + person)?.value || "";
+  }
+  renderPrivate(person);
+}
+
+function clearSearch(person) {
+  const st  = searchState[person];
+  st.text   = "";
+  st.from   = "";
+  st.to     = "";
+  const txt = document.getElementById("search-txt-"   + person);
+  const clr = document.getElementById("search-clear-" + person);
+  const f   = document.getElementById("search-from-"  + person);
+  const t   = document.getElementById("search-to-"    + person);
+  if (txt) txt.value = "";
+  if (clr) clr.classList.remove("visible");
+  if (f)   f.value   = "";
+  if (t)   t.value   = "";
+  renderPrivate(person);
+}
+
+/**
+ * Filtra un array de gastos según el estado de búsqueda del usuario.
+ * Modo texto: filtra por descripción (case-insensitive).
+ * Modo fecha: filtra por rango de fechas (from ≤ date ≤ to).
+ */
+function applySearch(arr, person) {
+  const st = searchState[person];
+  if (!st.byDate && !st.text) return arr;
+  if (st.byDate) {
+    return arr.filter(e => {
+      if (st.from && e.date < st.from) return false;
+      if (st.to   && e.date > st.to)   return false;
+      return true;
+    });
+  }
+  return arr.filter(e => (e.desc || "").toLowerCase().includes(st.text));
+}
+
 /* ─────────────────────────────────────────────────────────────
-   3.3b  SELECTOR DE MES PERSONALIZADO
-   ─────────────────────────────────────────────────────────────
    Puebla los <select class="month-select"> con opciones
    en formato "Jun 2026" para los últimos 12 meses y los
    próximos 2, con el mes actual seleccionado por defecto.
@@ -2928,9 +3115,23 @@ function renderPrivate(person) {
 
     container.innerHTML = "";
 
-    // En modo corte el listado se filtra por mes_corte; en calendario por fecha
-    var listado = filterByVista(expenses, person, month, privQ[person])
-                    .filter(e => e.person === person);
+    // Listado base filtrado por vista (calendario o corte)
+    var listadoBase = filterByVista(expenses, person, month, privQ[person])
+                        .filter(e => e.person === person);
+
+    // Aplicar filtro de búsqueda (texto o rango de fechas)
+    var listado = applySearch(listadoBase, person);
+
+    // Mostrar contador de resultados
+    var resLbl = document.getElementById("search-results-" + person);
+    var st     = searchState[person];
+    var hayBusqueda = st.byDate ? (st.from || st.to) : st.text;
+    if (resLbl) {
+      resLbl.textContent = (hayBusqueda && listado.length !== listadoBase.length)
+        ? listado.length + " resultado" + (listado.length !== 1 ? "s" : "") + " de " + listadoBase.length
+        : "";
+    }
+
     CATEGORIES.forEach(function(cat) {
       var catExp = listado.filter(e => e.catId === cat.id);
       var catTot = catExp.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
