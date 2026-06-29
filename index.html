@@ -1718,19 +1718,21 @@ function subscribeRealtime() {
       if (payload.eventType === "INSERT") {
         const existing = expenses.find(e => e.id === payload.new.id);
         if (!existing) {
-          // Quitar entrada temporal (id negativo) del mismo gasto si existe
-          // La identificamos por desc + amount + date + person coincidentes
+          // Quitar entradas temporales (id negativo) del mismo gasto si existen.
+          // Comparación tolerante: monto redondeado a 2 decimales, sin distinguir
+          // mayúsculas/espacios en la descripción, para evitar falsos negativos
+          // que dejarían duplicados.
           const r = payload.new;
-          const tempIdx = expenses.findIndex(e =>
-            e.id < 0 &&
-            e.desc   === r.desc &&
-            e.amount === parseFloat(r.amount) &&
-            e.date   === r.date &&
-            e.person === r.person
-          );
-          if (tempIdx !== -1) {
-            expenses.splice(tempIdx, 1);
-          }
+          const rAmount = Math.round(parseFloat(r.amount) * 100);
+          const rDesc   = (r.desc || "").trim().toLowerCase();
+          expenses = expenses.filter(e => {
+            if (e.id >= 0) return true; // no es temporal, conservar
+            const eAmount = Math.round(e.amount * 100);
+            const eDesc   = (e.desc || "").trim().toLowerCase();
+            const isMatch = eDesc === rDesc && eAmount === rAmount &&
+                             e.date === r.date && e.person === r.person;
+            return !isMatch; // quitar si coincide (es el temporal de este insert)
+          });
           expenses.unshift(mapRow(payload.new));
         }
       } else if (payload.eventType === "DELETE") {
@@ -1739,6 +1741,13 @@ function subscribeRealtime() {
         const i = expenses.findIndex(e => e.id === payload.new.id);
         if (i !== -1) expenses[i] = mapRow(payload.new);
       }
+      // Red de seguridad: eliminar cualquier duplicado residual por id
+      const seen = new Set();
+      expenses = expenses.filter(e => {
+        if (seen.has(e.id)) return false;
+        seen.add(e.id);
+        return true;
+      });
       renderAll();
     })
     .subscribe(s => setDot(s === "SUBSCRIBED" ? "live" : "connecting"));
