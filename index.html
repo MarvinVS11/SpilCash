@@ -569,6 +569,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .search-results-lbl {
   font-size: 0.72rem; color: var(--muted); padding: 2px 0;
 }
+.last-reg-date {
+  font-size: 0.66rem; color: var(--sh); font-weight: 700;
+  margin-left: 8px; letter-spacing: 0.3px; text-transform: none;
+  white-space: nowrap;
+}
 
 /* ── Filtro persona (Resumen) y tipo (perfiles) ── */
 .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -839,7 +844,9 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       </div>
 
       <!-- Acordeón -->
-      <p class="sec">/ Mis Gastos del Período</p>
+      <p class="sec">/ Mis Gastos del Período
+        <span class="last-reg-date" id="last-reg-1"></span>
+      </p>
       <div class="search-bar" id="search-bar-1">
         <div class="search-row">
           <div class="search-input-wrap">
@@ -1007,7 +1014,9 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       </div>
 
       <!-- Acordeón -->
-      <p class="sec">/ Mis Gastos del Período</p>
+      <p class="sec">/ Mis Gastos del Período
+        <span class="last-reg-date" id="last-reg-2"></span>
+      </p>
       <div class="search-bar" id="search-bar-2">
         <div class="search-row">
           <div class="search-input-wrap">
@@ -1517,6 +1526,7 @@ function mapRow(r) {
     tipoCambio:parseFloat(r.tipo_cambio || 1),
     tarjetaId: r.tarjeta_id != null ? Number(r.tarjeta_id) : null,
     mesCorte:  r.mes_corte || null,
+    createdAt: r.created_at || null,
   };
 }
 
@@ -3163,6 +3173,27 @@ function renderPrivate(person) {
 
   const filtered    = filterByPeriod(expenses, month, q);
   const mine        = filtered.filter(e => e.person === person);
+
+  // Última fecha de REGISTRO (no de ingreso al sistema) — busca entre
+  // TODOS los gastos de esta persona el más reciente por created_at,
+  // sin importar el período/mes que se esté viendo actualmente.
+  const allMine = expenses.filter(e => e.person === person && e.createdAt);
+  const lastRegEl = document.getElementById("last-reg-" + person);
+  if (lastRegEl) {
+    if (allMine.length > 0) {
+      const ultimo = allMine.reduce((latest, e) =>
+        new Date(e.createdAt) > new Date(latest.createdAt) ? e : latest
+      );
+      const d = new Date(ultimo.createdAt);
+      const fechaStr = String(d.getDate()).padStart(2,"0") + "/" +
+                        String(d.getMonth()+1).padStart(2,"0") + "/" +
+                        d.getFullYear();
+      lastRegEl.textContent = "· último registro: " + fechaStr;
+    } else {
+      lastRegEl.textContent = "";
+    }
+  }
+
   // Para cálculos financieros (saldo, gráfico) usar filterForSaldo
   // que asigna gastos con tarjeta a su mes de corte
   const forSaldo    = filterForSaldo(expenses, month, q);
