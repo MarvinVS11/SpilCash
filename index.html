@@ -562,6 +562,18 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .search-results-lbl {
   font-size: 0.72rem; color: var(--muted); padding: 2px 0;
 }
+
+/* ── Filtro persona (Resumen) y tipo (perfiles) ── */
+.filter-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.filter-pill {
+  background: transparent; border: 1.5px solid var(--border); color: #ffffff;
+  padding: 5px 14px; border-radius: 20px; font-family: inherit; font-size: 0.84rem;
+  font-weight: 700; letter-spacing: 0.5px; cursor: pointer; transition: var(--tr);
+  white-space: nowrap;
+}
+.filter-pill:hover { border-color: var(--sh); color: var(--sh); }
+.filter-pill.active { background: rgba(62,207,170,0.18); border-color: var(--sh); color: var(--sh); box-shadow: 0 0 6px rgba(62,207,170,0.3); }
+
 .row-editing td { background: var(--surface) !important; }
 
 /* Inputs/selects inline dentro de la celda */
@@ -683,7 +695,12 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
       <p id="balance-text">Cargando datos…</p>
     </div>
 
-    <p class="sec">/ Desglose por Categoría (Gastos Compartidos)</p>
+    <p class="sec">/ Desglose por Categoría</p>
+    <div class="filter-pills" id="pub-person-filter">
+      <button class="filter-pill active" id="pub-pf-todos"  onclick="setPubPersonFilter('todos')">👥 Ambos</button>
+      <button class="filter-pill"        id="pub-pf-1"      onclick="setPubPersonFilter(1)">🔵 Marvin</button>
+      <button class="filter-pill"        id="pub-pf-2"      onclick="setPubPersonFilter(2)">🟣 Karol</button>
+    </div>
     <div class="breakdown-grid" id="pub-breakdown"></div>
 
     <p class="sec">/ Detalle Gastos Compartidos</p>
@@ -838,6 +855,12 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         </div>
         <div class="search-results-lbl" id="search-results-1"></div>
       </div>
+      <div class="filter-pills" id="type-filter-1">
+        <button class="filter-pill active" id="tf-1-todos"     onclick="setTypeFilter(1,'todos')">📋 Todos</button>
+        <button class="filter-pill"        id="tf-1-shared"    onclick="setTypeFilter(1,'shared')">👥 Compartido</button>
+        <button class="filter-pill"        id="tf-1-individual" onclick="setTypeFilter(1,'individual')">👤 Individual</button>
+      </div>
+      <div class="search-results-lbl" id="type-filter-total-1" style="font-size:0.84rem;color:var(--text);font-weight:700;margin-bottom:8px"></div>
       <div class="vista-toggle" id="vista-toggle-1">
         <div class="vista-indicator" id="vista-ind-1"></div>
         <span class="vista-lbl active" id="vista-cal-1" onclick="setVista(1,'calendario')">📅 Calendario</span>
@@ -995,6 +1018,12 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         </div>
         <div class="search-results-lbl" id="search-results-2"></div>
       </div>
+      <div class="filter-pills" id="type-filter-2">
+        <button class="filter-pill active" id="tf-2-todos"     onclick="setTypeFilter(2,'todos')">📋 Todos</button>
+        <button class="filter-pill"        id="tf-2-shared"    onclick="setTypeFilter(2,'shared')">👥 Compartido</button>
+        <button class="filter-pill"        id="tf-2-individual" onclick="setTypeFilter(2,'individual')">👤 Individual</button>
+      </div>
+      <div class="search-results-lbl" id="type-filter-total-2" style="font-size:0.84rem;color:var(--text);font-weight:700;margin-bottom:8px"></div>
       <div class="vista-toggle" id="vista-toggle-2">
         <div class="vista-indicator" id="vista-ind-2"></div>
         <span class="vista-lbl active" id="vista-cal-2" onclick="setVista(2,'calendario')">📅 Calendario</span>
@@ -1094,6 +1123,18 @@ let pubQ            = 1;
 const privQ         = { 1: 1, 2: 1 };
 const loggedIn      = { 1: false, 2: false };
 const PAGES         = ["public", "p1", "p2"];
+
+// Estado de filtro por tipo en cada perfil: 'todos' | 'shared' | 'individual'
+const typeFilterState = { 1: "todos", 2: "todos" };
+
+function setTypeFilter(person, tipo) {
+  typeFilterState[person] = tipo;
+  ["todos", "shared", "individual"].forEach(t => {
+    const el = document.getElementById("tf-" + person + "-" + t);
+    if (el) el.classList.toggle("active", t === tipo);
+  });
+  renderPrivate(person);
+}
 
 // Estado de búsqueda por usuario
 const searchState = {
@@ -2912,6 +2953,18 @@ function calcSaldo(person, arr, month, q) {
 /* ─────────────────────────────────────────────────────────────
    3.12 RENDERIZADO — VISTA PÚBLICA
 ───────────────────────────────────────────────────────────── */
+// Filtro de persona en el desglose de Resumen: 'todos' | 1 | 2
+let pubPersonFilter = "todos";
+
+function setPubPersonFilter(val) {
+  pubPersonFilter = val;
+  ["todos", 1, 2].forEach(v => {
+    const el = document.getElementById("pub-pf-" + v);
+    if (el) el.classList.toggle("active", v === val);
+  });
+  renderPublic();
+}
+
 function renderPublic() {
   const mEl = document.getElementById("pub-month");
   if (!mEl.value) mEl.value = currentMonth();
@@ -2950,25 +3003,53 @@ function renderPublic() {
   }
   document.getElementById("balance-text").innerHTML = balHTML;
 
-  // Desglose visual por categoría (compartidos)
-  const sharedFiltered = filtered.filter(e => e.type === "shared");
+  // Desglose visual por categoría — respeta el filtro de persona
   const breakdown = document.getElementById("pub-breakdown");
   breakdown.innerHTML = "";
-  CATEGORIES.forEach(cat => {
-    const total = sharedFiltered.filter(e => e.catId === cat.id).reduce((s,e) => s+e.amount, 0);
-    if (total === 0) return;
-    const half = total / 2;
-    const card = document.createElement("div");
-    card.className = "bk-card";
-    card.innerHTML = `
-      <div class="bk-ico">${cat.icon}</div>
-      <div class="bk-cat">${cat.name}</div>
-      <div class="bk-amt">${fmt(half)}</div>
-      <div class="bk-sh">(${fmt(total)} total compartido)</div>
-    `;
-    breakdown.appendChild(card);
-  });
-  if (breakdown.innerHTML === "") breakdown.innerHTML = `<p class="empty">Sin gastos compartidos este período</p>`;
+
+  if (pubPersonFilter === "todos") {
+    // Modo original: solo gastos compartidos, dividido entre 2
+    const sharedFiltered = filtered.filter(e => e.type === "shared");
+    CATEGORIES.forEach(cat => {
+      const totalCat = sharedFiltered.filter(e => e.catId === cat.id).reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      if (totalCat === 0) return;
+      const half = totalCat / 2;
+      const card = document.createElement("div");
+      card.className = "bk-card";
+      card.innerHTML = `
+        <div class="bk-ico">${cat.icon}</div>
+        <div class="bk-cat">${cat.name}</div>
+        <div class="bk-amt">${fmt(half)}</div>
+        <div class="bk-sh">(${fmt(totalCat)} total compartido)</div>
+      `;
+      breakdown.appendChild(card);
+    });
+    if (breakdown.innerHTML === "") breakdown.innerHTML = `<p class="empty">Sin gastos compartidos este período</p>`;
+  } else {
+    // Modo persona: individual de esa persona + su mitad de los compartidos
+    const personId = pubPersonFilter;
+    CATEGORIES.forEach(cat => {
+      const indCat = filtered.filter(e => e.catId === cat.id && e.type === "p" + personId)
+        .reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      const shCat  = filtered.filter(e => e.catId === cat.id && e.type === "shared")
+        .reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      const total  = indCat + shCat / 2;
+      if (total === 0) return;
+      const card = document.createElement("div");
+      card.className = "bk-card";
+      const shLine = shCat > 0
+        ? `<div class="bk-sh">individual: ${fmt(indCat)} + compartido: ${fmt(shCat/2)}</div>`
+        : `<div class="bk-sh">individual</div>`;
+      card.innerHTML = `
+        <div class="bk-ico">${cat.icon}</div>
+        <div class="bk-cat">${cat.name}</div>
+        <div class="bk-amt">${fmt(total)}</div>
+        ${shLine}
+      `;
+      breakdown.appendChild(card);
+    });
+    if (breakdown.innerHTML === "") breakdown.innerHTML = `<p class="empty">Sin gastos para ${NAMES[personId]} este período</p>`;
+  }
 
   // Acordeón de compartidos
   const container = document.getElementById("pub-cats");
@@ -3135,8 +3216,14 @@ function renderPrivate(person) {
     container.innerHTML = "";
 
     // Listado base filtrado por vista (calendario o corte)
-    var listadoBase = filterByVista(expenses, person, month, privQ[person])
+    var listadoVista = filterByVista(expenses, person, month, privQ[person])
                         .filter(e => e.person === person);
+
+    // Aplicar filtro de tipo: todos / compartido / individual
+    var tipoSel = typeFilterState[person];
+    var listadoBase = tipoSel === "todos"
+      ? listadoVista
+      : listadoVista.filter(e => e.type === tipoSel || (tipoSel === "individual" && e.type !== "shared"));
 
     // Aplicar filtro de búsqueda (texto o rango de fechas)
     var listado = applySearch(listadoBase, person);
@@ -3149,6 +3236,27 @@ function renderPrivate(person) {
       resLbl.textContent = (hayBusqueda && listado.length !== listadoBase.length)
         ? listado.length + " resultado" + (listado.length !== 1 ? "s" : "") + " de " + listadoBase.length
         : "";
+    }
+
+    // Mostrar el total según el filtro de tipo activo
+    var totalLbl = document.getElementById("type-filter-total-" + person);
+    if (totalLbl) {
+      var totalMostrado;
+      if (tipoSel === "shared") {
+        // Compartido: mostrar la mitad (lo que le toca a esta persona) + el total
+        var totalSh = listadoBase.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+        totalMostrado = "Total compartido: " + fmt(totalSh/2) + " <span style='color:var(--muted);font-size:0.7rem'>(" + fmt(totalSh) + " entre los 2)</span>";
+      } else if (tipoSel === "individual") {
+        var totalInd = listadoBase.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+        totalMostrado = "Total individual: " + fmt(totalInd);
+      } else {
+        var totalTodos = listadoBase.reduce((s,e) => {
+          var amt = e.amountCRC||e.amount;
+          return s + (e.type === "shared" ? amt/2 : amt);
+        }, 0);
+        totalMostrado = "Total del período: " + fmt(totalTodos);
+      }
+      totalLbl.innerHTML = totalMostrado;
     }
 
     CATEGORIES.forEach(function(cat) {
