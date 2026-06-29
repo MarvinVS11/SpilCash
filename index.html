@@ -1281,15 +1281,14 @@ function applySearch(arr, person) {
     return arr.filter(e => e.date === st.from);
   }
   if (st.mode === "monto" && st.amt) {
-    // Filtra por coincidencia parcial del monto, igual que la búsqueda de texto.
-    // Compara contra el monto sin formato (solo dígitos) para que escribir
-    // "150" encuentre 1500, 150, 21500, etc. mientras se va tecleando.
+    // Filtra por el INICIO del monto (sin puntos ni comas).
+    // Escribir "6750" encuentra 6750, 67500, 675000... pero NO 216750.
     const needle = st.amt.replace(/[^\d]/g, "");
     if (!needle) return arr;
     return arr.filter(e => {
       const amt = e.amountCRC || e.amount;
       const amtStr = String(Math.round(amt));
-      return amtStr.includes(needle);
+      return amtStr.startsWith(needle);
     });
   }
   if (st.mode === "texto" && st.text) {
