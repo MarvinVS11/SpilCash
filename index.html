@@ -539,6 +539,16 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   display: none; gap: 8px; align-items: center; flex-wrap: wrap;
 }
 .search-dates.visible { display: flex; }
+.search-date-range-toggle {
+  font-size: 0.66rem; color: var(--muted); white-space: nowrap;
+  font-weight: 700; cursor: pointer; padding: 4px 8px;
+  border-radius: 14px; border: 1.5px solid var(--border);
+  background: transparent; transition: var(--tr); flex-shrink: 0;
+}
+.search-date-range-toggle:hover { border-color: var(--sh); color: var(--sh); }
+.search-date-range-toggle.on { background: rgba(91,138,255,0.18); border-color: var(--a1); color: var(--a1); }
+.search-date-to-wrap { display: none; align-items: center; gap: 6px; }
+.search-date-to-wrap.visible { display: flex; }
 .search-amounts { display: none; gap: 8px; align-items: center; flex-wrap: wrap; }
 .search-amounts.visible { display: flex; }
 .search-amounts input[type="text"] {
@@ -845,8 +855,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         </div>
         <div class="search-dates" id="search-dates-1">
           <input type="date" id="search-from-1" onchange="onSearch(1)"/>
-          <span>—</span>
-          <input type="date" id="search-to-1" onchange="onSearch(1)"/>
+          <button class="search-date-range-toggle" id="search-range-btn-1" onclick="toggleDateRange(1)">+ rango</button>
+          <div class="search-date-to-wrap" id="search-date-to-wrap-1">
+            <span>—</span>
+            <input type="date" id="search-to-1" onchange="onSearch(1)"/>
+          </div>
         </div>
         <div class="search-amounts" id="search-amounts-1">
           <input type="text" id="search-amt-1" placeholder="💰 Buscar por monto…" inputmode="decimal"
@@ -1010,8 +1023,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         </div>
         <div class="search-dates" id="search-dates-2">
           <input type="date" id="search-from-2" onchange="onSearch(2)"/>
-          <span>—</span>
-          <input type="date" id="search-to-2" onchange="onSearch(2)"/>
+          <button class="search-date-range-toggle" id="search-range-btn-2" onclick="toggleDateRange(2)">+ rango</button>
+          <div class="search-date-to-wrap" id="search-date-to-wrap-2">
+            <span>—</span>
+            <input type="date" id="search-to-2" onchange="onSearch(2)"/>
+          </div>
         </div>
         <div class="search-amounts" id="search-amounts-2">
           <input type="text" id="search-amt-2" placeholder="💰 Buscar por monto…" inputmode="decimal"
@@ -1139,9 +1155,26 @@ function setTypeFilter(person, tipo) {
 
 // Estado de búsqueda por usuario: mode = 'texto' | 'fecha' | 'monto'
 const searchState = {
-  1: { mode: "texto", text: "", from: "", to: "", amt: "" },
-  2: { mode: "texto", text: "", from: "", to: "", amt: "" },
+  1: { mode: "texto", text: "", from: "", to: "", amt: "", dateRangeOn: false },
+  2: { mode: "texto", text: "", from: "", to: "", amt: "", dateRangeOn: false },
 };
+
+/** Activa/desactiva el campo "hasta" para buscar por rango de fechas */
+function toggleDateRange(person) {
+  const st  = searchState[person];
+  st.dateRangeOn = !st.dateRangeOn;
+  const btn = document.getElementById("search-range-btn-" + person);
+  const wrap= document.getElementById("search-date-to-wrap-" + person);
+  if (btn)  btn.classList.toggle("on", st.dateRangeOn);
+  if (wrap) wrap.classList.toggle("visible", st.dateRangeOn);
+  if (!st.dateRangeOn) {
+    // Al desactivar el rango, limpiar "hasta" y quedarse solo con la fecha única
+    st.to = "";
+    const t = document.getElementById("search-to-" + person);
+    if (t) t.value = "";
+  }
+  onSearch(person);
+}
 
 /**
  * Cambia el modo de búsqueda activo (texto / fecha / monto).
@@ -1172,10 +1205,14 @@ function setSearchMode(person, mode) {
     document.getElementById("search-clear-" + person)?.classList.remove("visible");
   }
   if (mode !== "fecha") {
-    st.from = ""; st.to = "";
+    st.from = ""; st.to = ""; st.dateRangeOn = false;
     const f = document.getElementById("search-from-" + person);
     const t = document.getElementById("search-to-"   + person);
+    const btn = document.getElementById("search-range-btn-" + person);
+    const wrap = document.getElementById("search-date-to-wrap-" + person);
     if (f) f.value = ""; if (t) t.value = "";
+    if (btn)  btn.classList.remove("on");
+    if (wrap) wrap.classList.remove("visible");
   }
   if (mode !== "monto") {
     st.amt = "";
@@ -1204,17 +1241,21 @@ function onSearch(person) {
 
 function clearSearch(person) {
   const st = searchState[person];
-  st.text = ""; st.from = ""; st.to = ""; st.amt = "";
+  st.text = ""; st.from = ""; st.to = ""; st.amt = ""; st.dateRangeOn = false;
   const txt = document.getElementById("search-txt-"   + person);
   const clr = document.getElementById("search-clear-" + person);
   const f   = document.getElementById("search-from-"  + person);
   const t   = document.getElementById("search-to-"    + person);
   const a   = document.getElementById("search-amt-"   + person);
+  const btn = document.getElementById("search-range-btn-" + person);
+  const wrap= document.getElementById("search-date-to-wrap-" + person);
   if (txt) txt.value = "";
   if (clr) clr.classList.remove("visible");
   if (f)   f.value   = "";
   if (t)   t.value   = "";
   if (a)   a.value   = "";
+  if (btn)  btn.classList.remove("on");
+  if (wrap) wrap.classList.remove("visible");
   renderPrivate(person);
 }
 
@@ -1228,11 +1269,16 @@ function clearSearch(person) {
 function applySearch(arr, person) {
   const st = searchState[person];
   if (st.mode === "fecha" && (st.from || st.to)) {
-    return arr.filter(e => {
-      if (st.from && e.date < st.from) return false;
-      if (st.to   && e.date > st.to)   return false;
-      return true;
-    });
+    if (st.dateRangeOn) {
+      // Modo rango: from ≤ date ≤ to
+      return arr.filter(e => {
+        if (st.from && e.date < st.from) return false;
+        if (st.to   && e.date > st.to)   return false;
+        return true;
+      });
+    }
+    // Modo fecha única: coincidencia exacta del día
+    return arr.filter(e => e.date === st.from);
   }
   if (st.mode === "monto" && st.amt) {
     // Filtra por coincidencia parcial del monto, igual que la búsqueda de texto.
