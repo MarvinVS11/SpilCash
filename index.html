@@ -524,33 +524,31 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .search-clear.visible { display: block; }
 /* Switch modo fecha */
 .search-mode-wrap {
-  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
 }
-.search-mode-lbl {
-  font-size: 0.72rem; color: var(--muted); white-space: nowrap;
-  font-weight: 700; cursor: pointer; transition: color 0.2s;
+.search-mode-pill {
+  font-size: 0.66rem; color: var(--muted); white-space: nowrap;
+  font-weight: 700; cursor: pointer; transition: var(--tr);
+  padding: 5px 9px; border-radius: 14px; border: 1.5px solid var(--border);
+  background: transparent;
 }
-.search-mode-lbl.on { color: var(--a1); }
-.search-sw {
-  position: relative; width: 36px; height: 20px; cursor: pointer; flex-shrink: 0;
-}
-.search-sw input { opacity: 0; width: 0; height: 0; position: absolute; }
-.search-sw-track {
-  position: absolute; inset: 0; background: var(--border);
-  border-radius: 10px; transition: background 0.22s;
-}
-.search-sw input:checked ~ .search-sw-track { background: var(--a1); }
-.search-sw-track::after {
-  content: ""; position: absolute; width: 14px; height: 14px;
-  border-radius: 50%; background: #fff; top: 3px; left: 3px;
-  transition: transform 0.22s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}
-.search-sw input:checked ~ .search-sw-track::after { transform: translateX(16px); }
+.search-mode-pill:hover { border-color: var(--sh); color: var(--sh); }
+.search-mode-pill.on { background: rgba(91,138,255,0.18); border-color: var(--a1); color: var(--a1); }
 /* Rango de fechas */
 .search-dates {
   display: none; gap: 8px; align-items: center; flex-wrap: wrap;
 }
 .search-dates.visible { display: flex; }
+.search-amounts { display: none; gap: 8px; align-items: center; flex-wrap: wrap; }
+.search-amounts.visible { display: flex; }
+.search-amounts input[type="number"] {
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 8px; color: var(--text); padding: 6px 8px;
+  font-family: inherit; font-size: 0.80rem; flex: 1; min-width: 100px;
+  transition: border-color var(--tr);
+}
+.search-amounts input[type="number"]:focus { outline: none; border-color: var(--a1); }
+.search-amounts span { font-size: 0.75rem; color: var(--muted); }
 .search-dates input[type="date"] {
   background: var(--card); border: 1.5px solid var(--border);
   border-radius: 8px; color: var(--text); padding: 6px 8px;
@@ -841,17 +839,20 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
             <button class="search-clear" id="search-clear-1" onclick="clearSearch(1)">✕</button>
           </div>
           <div class="search-mode-wrap">
-            <span class="search-mode-lbl" id="search-lbl-1">📅 Fecha</span>
-            <label class="search-sw">
-              <input type="checkbox" id="search-sw-1" onchange="toggleSearchMode(1)"/>
-              <div class="search-sw-track"></div>
-            </label>
+            <button class="search-mode-pill on" id="search-mode-txt-1"  onclick="setSearchMode(1,'texto')">🔍</button>
+            <button class="search-mode-pill"    id="search-mode-date-1" onclick="setSearchMode(1,'fecha')">📅</button>
+            <button class="search-mode-pill"    id="search-mode-amt-1"  onclick="setSearchMode(1,'monto')">💰</button>
           </div>
         </div>
         <div class="search-dates" id="search-dates-1">
           <input type="date" id="search-from-1" onchange="onSearch(1)"/>
           <span>—</span>
           <input type="date" id="search-to-1" onchange="onSearch(1)"/>
+        </div>
+        <div class="search-amounts" id="search-amounts-1">
+          <input type="number" id="search-amt-from-1" placeholder="Monto mínimo" min="0" step="100" onchange="onSearch(1)"/>
+          <span>—</span>
+          <input type="number" id="search-amt-to-1" placeholder="Monto máximo" min="0" step="100" onchange="onSearch(1)"/>
         </div>
         <div class="search-results-lbl" id="search-results-1"></div>
       </div>
@@ -1004,17 +1005,20 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
             <button class="search-clear" id="search-clear-2" onclick="clearSearch(2)">✕</button>
           </div>
           <div class="search-mode-wrap">
-            <span class="search-mode-lbl" id="search-lbl-2">📅 Fecha</span>
-            <label class="search-sw">
-              <input type="checkbox" id="search-sw-2" onchange="toggleSearchMode(2)"/>
-              <div class="search-sw-track"></div>
-            </label>
+            <button class="search-mode-pill on" id="search-mode-txt-2"  onclick="setSearchMode(2,'texto')">🔍</button>
+            <button class="search-mode-pill"    id="search-mode-date-2" onclick="setSearchMode(2,'fecha')">📅</button>
+            <button class="search-mode-pill"    id="search-mode-amt-2"  onclick="setSearchMode(2,'monto')">💰</button>
           </div>
         </div>
         <div class="search-dates" id="search-dates-2">
           <input type="date" id="search-from-2" onchange="onSearch(2)"/>
           <span>—</span>
           <input type="date" id="search-to-2" onchange="onSearch(2)"/>
+        </div>
+        <div class="search-amounts" id="search-amounts-2">
+          <input type="number" id="search-amt-from-2" placeholder="Monto mínimo" min="0" step="100" onchange="onSearch(2)"/>
+          <span>—</span>
+          <input type="number" id="search-amt-to-2" placeholder="Monto máximo" min="0" step="100" onchange="onSearch(2)"/>
         </div>
         <div class="search-results-lbl" id="search-results-2"></div>
       </div>
@@ -1136,66 +1140,88 @@ function setTypeFilter(person, tipo) {
   renderPrivate(person);
 }
 
-// Estado de búsqueda por usuario
+// Estado de búsqueda por usuario: mode = 'texto' | 'fecha' | 'monto'
 const searchState = {
-  1: { text: "", byDate: false, from: "", to: "" },
-  2: { text: "", byDate: false, from: "", to: "" },
+  1: { mode: "texto", text: "", from: "", to: "", amtFrom: "", amtTo: "" },
+  2: { mode: "texto", text: "", from: "", to: "", amtFrom: "", amtTo: "" },
 };
 
-function toggleSearchMode(person) {
-  const sw  = document.getElementById("search-sw-" + person);
-  const lbl = document.getElementById("search-lbl-" + person);
-  const dts = document.getElementById("search-dates-" + person);
-  const txt = document.getElementById("search-txt-" + person);
-  const on  = sw.checked;
-  searchState[person].byDate = on;
-  if (lbl) lbl.classList.toggle("on", on);
-  if (dts) dts.classList.toggle("visible", on);
-  if (txt) txt.disabled = on;
-  if (on) {
-    // Limpiar texto al activar modo fecha
-    searchState[person].text = "";
+/**
+ * Cambia el modo de búsqueda activo (texto / fecha / monto).
+ * Limpia los campos de los otros modos al cambiar para evitar
+ * filtros combinados confusos.
+ */
+function setSearchMode(person, mode) {
+  const st = searchState[person];
+  st.mode = mode;
+
+  ["txt", "date", "amt"].forEach(key => {
+    const id = key === "txt" ? "texto" : key === "date" ? "fecha" : "monto";
+    const el = document.getElementById("search-mode-" + key + "-" + person);
+    if (el) el.classList.toggle("on", id === mode);
+  });
+
+  const dts = document.getElementById("search-dates-"   + person);
+  const amt = document.getElementById("search-amounts-" + person);
+  const txt = document.getElementById("search-txt-"     + person);
+  if (dts) dts.classList.toggle("visible", mode === "fecha");
+  if (amt) amt.classList.toggle("visible", mode === "monto");
+  if (txt) txt.disabled = mode !== "texto";
+
+  // Limpiar campos de los modos no activos
+  if (mode !== "texto") {
+    st.text = "";
     if (txt) txt.value = "";
     document.getElementById("search-clear-" + person)?.classList.remove("visible");
-  } else {
-    // Limpiar fechas al desactivar
-    searchState[person].from = "";
-    searchState[person].to   = "";
+  }
+  if (mode !== "fecha") {
+    st.from = ""; st.to = "";
     const f = document.getElementById("search-from-" + person);
     const t = document.getElementById("search-to-"   + person);
-    if (f) f.value = "";
-    if (t) t.value = "";
+    if (f) f.value = ""; if (t) t.value = "";
   }
+  if (mode !== "monto") {
+    st.amtFrom = ""; st.amtTo = "";
+    const af = document.getElementById("search-amt-from-" + person);
+    const at = document.getElementById("search-amt-to-"   + person);
+    if (af) af.value = ""; if (at) at.value = "";
+  }
+
   onSearch(person);
 }
 
 function onSearch(person) {
   const st  = searchState[person];
-  const txt = document.getElementById("search-txt-"  + person);
-  const clr = document.getElementById("search-clear-" + person);
-  if (!st.byDate) {
+  if (st.mode === "texto") {
+    const txt = document.getElementById("search-txt-" + person);
+    const clr = document.getElementById("search-clear-" + person);
     st.text = txt?.value.trim().toLowerCase() || "";
     if (clr) clr.classList.toggle("visible", st.text.length > 0);
-  } else {
+  } else if (st.mode === "fecha") {
     st.from = document.getElementById("search-from-" + person)?.value || "";
     st.to   = document.getElementById("search-to-"   + person)?.value || "";
+  } else if (st.mode === "monto") {
+    st.amtFrom = document.getElementById("search-amt-from-" + person)?.value || "";
+    st.amtTo   = document.getElementById("search-amt-to-"   + person)?.value || "";
   }
   renderPrivate(person);
 }
 
 function clearSearch(person) {
-  const st  = searchState[person];
-  st.text   = "";
-  st.from   = "";
-  st.to     = "";
-  const txt = document.getElementById("search-txt-"   + person);
-  const clr = document.getElementById("search-clear-" + person);
-  const f   = document.getElementById("search-from-"  + person);
-  const t   = document.getElementById("search-to-"    + person);
+  const st = searchState[person];
+  st.text = ""; st.from = ""; st.to = ""; st.amtFrom = ""; st.amtTo = "";
+  const txt = document.getElementById("search-txt-"      + person);
+  const clr = document.getElementById("search-clear-"    + person);
+  const f   = document.getElementById("search-from-"     + person);
+  const t   = document.getElementById("search-to-"       + person);
+  const af  = document.getElementById("search-amt-from-" + person);
+  const at  = document.getElementById("search-amt-to-"   + person);
   if (txt) txt.value = "";
   if (clr) clr.classList.remove("visible");
   if (f)   f.value   = "";
   if (t)   t.value   = "";
+  if (af)  af.value  = "";
+  if (at)  at.value  = "";
   renderPrivate(person);
 }
 
@@ -1203,18 +1229,30 @@ function clearSearch(person) {
  * Filtra un array de gastos según el estado de búsqueda del usuario.
  * Modo texto: filtra por descripción (case-insensitive).
  * Modo fecha: filtra por rango de fechas (from ≤ date ≤ to).
+ * Modo monto: filtra por rango de monto, comparando siempre en CRC
+ *             (usa amountCRC para que USD y CRC sean comparables).
  */
 function applySearch(arr, person) {
   const st = searchState[person];
-  if (!st.byDate && !st.text) return arr;
-  if (st.byDate) {
+  if (st.mode === "fecha" && (st.from || st.to)) {
     return arr.filter(e => {
       if (st.from && e.date < st.from) return false;
       if (st.to   && e.date > st.to)   return false;
       return true;
     });
   }
-  return arr.filter(e => (e.desc || "").toLowerCase().includes(st.text));
+  if (st.mode === "monto" && (st.amtFrom || st.amtTo)) {
+    const min = st.amtFrom ? parseFloat(st.amtFrom) : -Infinity;
+    const max = st.amtTo   ? parseFloat(st.amtTo)   : Infinity;
+    return arr.filter(e => {
+      const amt = e.amountCRC || e.amount;
+      return amt >= min && amt <= max;
+    });
+  }
+  if (st.mode === "texto" && st.text) {
+    return arr.filter(e => (e.desc || "").toLowerCase().includes(st.text));
+  }
+  return arr;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -3231,7 +3269,9 @@ function renderPrivate(person) {
     // Mostrar contador de resultados
     var resLbl = document.getElementById("search-results-" + person);
     var st     = searchState[person];
-    var hayBusqueda = st.byDate ? (st.from || st.to) : st.text;
+    var hayBusqueda = st.mode === "fecha" ? (st.from || st.to)
+                     : st.mode === "monto" ? (st.amtFrom || st.amtTo)
+                     : st.text;
     if (resLbl) {
       resLbl.textContent = (hayBusqueda && listado.length !== listadoBase.length)
         ? listado.length + " resultado" + (listado.length !== 1 ? "s" : "") + " de " + listadoBase.length
