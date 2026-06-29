@@ -541,14 +541,13 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .search-dates.visible { display: flex; }
 .search-amounts { display: none; gap: 8px; align-items: center; flex-wrap: wrap; }
 .search-amounts.visible { display: flex; }
-.search-amounts input[type="number"] {
+.search-amounts input[type="text"] {
   background: var(--card); border: 1.5px solid var(--border);
   border-radius: 8px; color: var(--text); padding: 6px 8px;
-  font-family: inherit; font-size: 0.80rem; flex: 1; min-width: 100px;
-  transition: border-color var(--tr);
+  font-family: inherit; font-size: 0.84rem; flex: 1; min-width: 100px;
+  transition: border-color var(--tr); box-sizing: border-box;
 }
-.search-amounts input[type="number"]:focus { outline: none; border-color: var(--a1); }
-.search-amounts span { font-size: 0.75rem; color: var(--muted); }
+.search-amounts input[type="text"]:focus { outline: none; border-color: var(--a1); }
 .search-dates input[type="date"] {
   background: var(--card); border: 1.5px solid var(--border);
   border-radius: 8px; color: var(--text); padding: 6px 8px;
@@ -850,9 +849,8 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
           <input type="date" id="search-to-1" onchange="onSearch(1)"/>
         </div>
         <div class="search-amounts" id="search-amounts-1">
-          <input type="number" id="search-amt-from-1" placeholder="Monto mínimo" min="0" step="100" onchange="onSearch(1)"/>
-          <span>—</span>
-          <input type="number" id="search-amt-to-1" placeholder="Monto máximo" min="0" step="100" onchange="onSearch(1)"/>
+          <input type="text" id="search-amt-1" placeholder="💰 Buscar por monto…" inputmode="decimal"
+                 oninput="onSearch(1)" autocomplete="off"/>
         </div>
         <div class="search-results-lbl" id="search-results-1"></div>
       </div>
@@ -1016,9 +1014,8 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
           <input type="date" id="search-to-2" onchange="onSearch(2)"/>
         </div>
         <div class="search-amounts" id="search-amounts-2">
-          <input type="number" id="search-amt-from-2" placeholder="Monto mínimo" min="0" step="100" onchange="onSearch(2)"/>
-          <span>—</span>
-          <input type="number" id="search-amt-to-2" placeholder="Monto máximo" min="0" step="100" onchange="onSearch(2)"/>
+          <input type="text" id="search-amt-2" placeholder="💰 Buscar por monto…" inputmode="decimal"
+                 oninput="onSearch(2)" autocomplete="off"/>
         </div>
         <div class="search-results-lbl" id="search-results-2"></div>
       </div>
@@ -1142,8 +1139,8 @@ function setTypeFilter(person, tipo) {
 
 // Estado de búsqueda por usuario: mode = 'texto' | 'fecha' | 'monto'
 const searchState = {
-  1: { mode: "texto", text: "", from: "", to: "", amtFrom: "", amtTo: "" },
-  2: { mode: "texto", text: "", from: "", to: "", amtFrom: "", amtTo: "" },
+  1: { mode: "texto", text: "", from: "", to: "", amt: "" },
+  2: { mode: "texto", text: "", from: "", to: "", amt: "" },
 };
 
 /**
@@ -1181,10 +1178,9 @@ function setSearchMode(person, mode) {
     if (f) f.value = ""; if (t) t.value = "";
   }
   if (mode !== "monto") {
-    st.amtFrom = ""; st.amtTo = "";
-    const af = document.getElementById("search-amt-from-" + person);
-    const at = document.getElementById("search-amt-to-"   + person);
-    if (af) af.value = ""; if (at) at.value = "";
+    st.amt = "";
+    const a = document.getElementById("search-amt-" + person);
+    if (a) a.value = "";
   }
 
   onSearch(person);
@@ -1201,27 +1197,24 @@ function onSearch(person) {
     st.from = document.getElementById("search-from-" + person)?.value || "";
     st.to   = document.getElementById("search-to-"   + person)?.value || "";
   } else if (st.mode === "monto") {
-    st.amtFrom = document.getElementById("search-amt-from-" + person)?.value || "";
-    st.amtTo   = document.getElementById("search-amt-to-"   + person)?.value || "";
+    st.amt = document.getElementById("search-amt-" + person)?.value.trim() || "";
   }
   renderPrivate(person);
 }
 
 function clearSearch(person) {
   const st = searchState[person];
-  st.text = ""; st.from = ""; st.to = ""; st.amtFrom = ""; st.amtTo = "";
-  const txt = document.getElementById("search-txt-"      + person);
-  const clr = document.getElementById("search-clear-"    + person);
-  const f   = document.getElementById("search-from-"     + person);
-  const t   = document.getElementById("search-to-"       + person);
-  const af  = document.getElementById("search-amt-from-" + person);
-  const at  = document.getElementById("search-amt-to-"   + person);
+  st.text = ""; st.from = ""; st.to = ""; st.amt = "";
+  const txt = document.getElementById("search-txt-"   + person);
+  const clr = document.getElementById("search-clear-" + person);
+  const f   = document.getElementById("search-from-"  + person);
+  const t   = document.getElementById("search-to-"    + person);
+  const a   = document.getElementById("search-amt-"   + person);
   if (txt) txt.value = "";
   if (clr) clr.classList.remove("visible");
   if (f)   f.value   = "";
   if (t)   t.value   = "";
-  if (af)  af.value  = "";
-  if (at)  at.value  = "";
+  if (a)   a.value   = "";
   renderPrivate(person);
 }
 
@@ -1241,12 +1234,16 @@ function applySearch(arr, person) {
       return true;
     });
   }
-  if (st.mode === "monto" && (st.amtFrom || st.amtTo)) {
-    const min = st.amtFrom ? parseFloat(st.amtFrom) : -Infinity;
-    const max = st.amtTo   ? parseFloat(st.amtTo)   : Infinity;
+  if (st.mode === "monto" && st.amt) {
+    // Filtra por coincidencia parcial del monto, igual que la búsqueda de texto.
+    // Compara contra el monto sin formato (solo dígitos) para que escribir
+    // "150" encuentre 1500, 150, 21500, etc. mientras se va tecleando.
+    const needle = st.amt.replace(/[^\d]/g, "");
+    if (!needle) return arr;
     return arr.filter(e => {
       const amt = e.amountCRC || e.amount;
-      return amt >= min && amt <= max;
+      const amtStr = String(Math.round(amt));
+      return amtStr.includes(needle);
     });
   }
   if (st.mode === "texto" && st.text) {
@@ -3270,7 +3267,7 @@ function renderPrivate(person) {
     var resLbl = document.getElementById("search-results-" + person);
     var st     = searchState[person];
     var hayBusqueda = st.mode === "fecha" ? (st.from || st.to)
-                     : st.mode === "monto" ? (st.amtFrom || st.amtTo)
+                     : st.mode === "monto" ? st.amt
                      : st.text;
     if (resLbl) {
       resLbl.textContent = (hayBusqueda && listado.length !== listadoBase.length)
