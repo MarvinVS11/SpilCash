@@ -571,6 +571,17 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .search-results-lbl {
   font-size: 0.72rem; color: var(--muted); padding: 2px 0;
 }
+.search-footer-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; flex-wrap: wrap;
+}
+.btn-clear-filters {
+  background: transparent; border: 1.5px solid var(--danger); color: var(--danger);
+  border-radius: 14px; padding: 4px 12px; font-family: inherit; font-size: 0.68rem;
+  font-weight: 700; letter-spacing: 0.3px; cursor: pointer; transition: var(--tr);
+  white-space: nowrap; flex-shrink: 0;
+}
+.btn-clear-filters:hover { background: rgba(255,77,109,0.12); }
 .last-reg-date {
   font-size: 0.66rem; color: var(--sh); font-weight: 700;
   margin-left: 8px; letter-spacing: 0.3px; text-transform: none;
@@ -874,7 +885,10 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
           <input type="text" id="search-amt-1" placeholder="💰 Buscar por monto…" inputmode="decimal"
                  oninput="onSearch(1)" autocomplete="off"/>
         </div>
-        <div class="search-results-lbl" id="search-results-1"></div>
+        <div class="search-footer-row">
+          <div class="search-results-lbl" id="search-results-1"></div>
+          <button class="btn-clear-filters" onclick="resetSearch(1)">🧹 Limpiar filtros</button>
+        </div>
       </div>
       <div class="filter-pills" id="type-filter-1">
         <button class="filter-pill active" id="tf-1-todos"     onclick="setTypeFilter(1,'todos')">📋 Todos</button>
@@ -1044,7 +1058,10 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
           <input type="text" id="search-amt-2" placeholder="💰 Buscar por monto…" inputmode="decimal"
                  oninput="onSearch(2)" autocomplete="off"/>
         </div>
-        <div class="search-results-lbl" id="search-results-2"></div>
+        <div class="search-footer-row">
+          <div class="search-results-lbl" id="search-results-2"></div>
+          <button class="btn-clear-filters" onclick="resetSearch(2)">🧹 Limpiar filtros</button>
+        </div>
       </div>
       <div class="filter-pills" id="type-filter-2">
         <button class="filter-pill active" id="tf-2-todos"     onclick="setTypeFilter(2,'todos')">📋 Todos</button>
@@ -1268,6 +1285,17 @@ function clearSearch(person) {
   if (btn)  btn.classList.remove("on");
   if (wrap) wrap.classList.remove("visible");
   renderPrivate(person);
+}
+
+/**
+ * Limpia COMPLETAMENTE la búsqueda: borra texto, fecha, monto y rango,
+ * y regresa el modo activo a "texto" (el modo por defecto), dejando
+ * todo listo para una nueva búsqueda desde cero.
+ */
+function resetSearch(person) {
+  clearSearch(person);
+  setSearchMode(person, "texto");
+  showToast("\u2713 Filtros de b\u00fasqueda limpiados", "ok");
 }
 
 /**
