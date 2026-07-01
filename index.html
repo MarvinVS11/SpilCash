@@ -2938,30 +2938,37 @@ async function toggleLiquidado(id) {
  */
 /**
  * Calcula el balance de gastos compartidos pendientes de liquidar,
- * agrupados por mes_liquidacion:
- *  - Gastos con tarjeta → usa mes_corte
- *  - Gastos en efectivo → usa mes de la fecha real
- * Solo incluye gastos con liquidado = false.
- * Sin filtro de período — es histórico completo.
+ * agrupados por mes_liquidacion y separados por persona:
+ *  - totalP1: lo que registró Marvin (Karol le debe la mitad)
+ *  - totalP2: lo que registró Karol (Marvin le debe la mitad)
+ *  - neto: diferencia — quién le debe a quién y cuánto
  */
 function calcPendienteLiquidar() {
   const pendientes = expenses.filter(e => e.type === "shared" && !e.liquidado);
-  if (pendientes.length === 0) return { grupos: [], totalGlobal: 0, halfGlobal: 0 };
+  if (pendientes.length === 0) return { grupos: [], totalGlobal: 0, neto: 0, debePersona: 0 };
 
   // Agrupar por mes_liquidacion
   const grupos = {};
   pendientes.forEach(e => {
     const mesLiq = e.mesCorte || (e.date ? e.date.slice(0, 7) : "sin-fecha");
-    if (!grupos[mesLiq]) grupos[mesLiq] = { mes: mesLiq, gastos: [], total: 0 };
+    if (!grupos[mesLiq]) grupos[mesLiq] = { mes: mesLiq, gastos: [], totalP1: 0, totalP2: 0 };
     grupos[mesLiq].gastos.push(e);
-    grupos[mesLiq].total += (e.amountCRC || e.amount);
+    if (e.person === 1) grupos[mesLiq].totalP1 += (e.amountCRC || e.amount);
+    else                grupos[mesLiq].totalP2 += (e.amountCRC || e.amount);
   });
 
   // Ordenar por mes ascendente
   const gruposArr = Object.values(grupos).sort((a, b) => a.mes.localeCompare(b.mes));
-  const totalGlobal = gruposArr.reduce((s, g) => s + g.total, 0);
 
-  return { grupos: gruposArr, totalGlobal, halfGlobal: totalGlobal / 2 };
+  // Calcular totales globales
+  const totalP1     = gruposArr.reduce((s, g) => s + g.totalP1, 0);
+  const totalP2     = gruposArr.reduce((s, g) => s + g.totalP2, 0);
+  const totalGlobal = totalP1 + totalP2;
+  // Neto: Karol debe mitad de P1, Marvin debe mitad de P2
+  // Si positivo → Karol le debe a Marvin; si negativo → Marvin le debe a Karol
+  const neto = (totalP1 / 2) - (totalP2 / 2);
+
+  return { grupos: gruposArr, totalGlobal, neto, totalP1, totalP2 };
 }
 
 /**
@@ -3257,17 +3264,47 @@ function renderPublic() {
   } else {
     pendHTML = pend.grupos.map(g => {
       const etiq   = etiquetaCorte(g.mes) || g.mes;
+      const total  = g.totalP1 + g.totalP2;
       const count  = g.gastos.length;
+      // Neto del mes: Karol debe mitad P1, Marvin debe mitad P2
+      const netoMes = (g.totalP1 / 2) - (g.totalP2 / 2);
+      const debeQuien = netoMes > 0
+        ? `Karol le debe a Marvin <strong style="color:var(--warn)">${fmt(netoMes)}</strong>`
+        : netoMes < 0
+        ? `Marvin le debe a Karol <strong style="color:var(--warn)">${fmt(Math.abs(netoMes))}</strong>`
+        : `<strong style="color:var(--saving)">Empatados</strong>`;
+
+      const detP1 = g.totalP1 > 0
+        ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:3px">Marvin registró: ${fmt(g.totalP1)} · Karol debe: ${fmt(g.totalP1/2)}</div>`
+        : "";
+      const detP2 = g.totalP2 > 0
+        ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:2px">Karol registró: ${fmt(g.totalP2)} · Marvin debe: ${fmt(g.totalP2/2)}</div>`
+        : "";
+
       return `<div class="pend-mes-row">
-        <span class="pend-mes-lbl">${etiq}</span>
-        <span class="pend-mes-tot">${count} gasto${count !== 1 ? "s" : ""} · ${fmt(g.total)} total</span>
-        <span class="pend-mes-half">${fmt(g.total / 2)} c/u</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="pend-mes-lbl">${etiq}</span>
+            <span style="font-size:0.72rem;color:var(--muted)">${count} gasto${count!==1?"s":""} · ${fmt(total)} total</span>
+          </div>
+          ${detP1}${detP2}
+          <div style="font-size:0.80rem;margin-top:5px">${debeQuien}</div>
+        </div>
         <button class="btn-liquidar-mes" onclick="liquidarMes('${g.mes}')">✓ Liquidar</button>
       </div>`;
     }).join("");
+
+    // Neto global
+    const netoGlobal = pend.neto;
+    const netoTexto  = netoGlobal > 0
+      ? `Karol le debe a Marvin <strong style="color:var(--sh)">${fmt(netoGlobal)}</strong>`
+      : netoGlobal < 0
+      ? `Marvin le debe a Karol <strong style="color:var(--sh)">${fmt(Math.abs(netoGlobal))}</strong>`
+      : `<strong style="color:var(--saving)">Empatados — sin deuda neta</strong>`;
+
     pendHTML += `<div class="pend-total-row">
-      <span class="pend-total-lbl">Total pendiente</span>
-      <span class="pend-total-half">${fmt(pend.halfGlobal)} por persona</span>
+      <span class="pend-total-lbl">Balance neto total</span>
+      <span class="pend-total-half">${netoTexto}</span>
     </div>`;
   }
   document.getElementById("pending-text").innerHTML = pendHTML;
