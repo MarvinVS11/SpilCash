@@ -154,6 +154,30 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .balance-box strong { color: var(--sh); }
 .balance-box.negative strong { color: var(--danger); }
 
+/* ── Pendiente liquidar desglose ── */
+.pend-mes-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.pend-mes-row:last-child { border-bottom: none; padding-bottom: 0; }
+.pend-mes-lbl  { font-size: 0.84rem; font-weight: 700; color: var(--text); min-width: 80px; }
+.pend-mes-tot  { font-size: 0.84rem; color: var(--muted); flex: 1; }
+.pend-mes-half { font-size: 0.92rem; font-weight: 700; color: var(--warn); white-space: nowrap; }
+.pend-total-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 10px; padding-top: 8px; border-top: 1.5px solid var(--border);
+  flex-wrap: wrap; gap: 6px;
+}
+.pend-total-lbl  { font-size: 0.78rem; color: var(--muted); }
+.pend-total-half { font-size: 1.05rem; font-weight: 700; color: var(--sh); }
+.btn-liquidar-mes {
+  background: var(--saving); color: #0d1a16; border: none; border-radius: 8px;
+  padding: 5px 12px; font-family: inherit; font-size: 0.70rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap; transition: opacity var(--tr); flex-shrink: 0;
+}
+.btn-liquidar-mes:hover { opacity: 0.85; }
+
 /* ── Budget input row (ingresos / ahorro / deudas) ── */
 .budget-row {
   background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r);
@@ -2912,10 +2936,61 @@ async function toggleLiquidado(id) {
  * sin filtro de mes ni quincena — mira el historial completo de gastos
  * compartidos con liquidado = false.
  */
+/**
+ * Calcula el balance de gastos compartidos pendientes de liquidar,
+ * agrupados por mes_liquidacion:
+ *  - Gastos con tarjeta → usa mes_corte
+ *  - Gastos en efectivo → usa mes de la fecha real
+ * Solo incluye gastos con liquidado = false.
+ * Sin filtro de período — es histórico completo.
+ */
 function calcPendienteLiquidar() {
   const pendientes = expenses.filter(e => e.type === "shared" && !e.liquidado);
-  const totalPend  = pendientes.reduce((s, e) => s + (e.amountCRC || e.amount), 0);
-  return { count: pendientes.length, total: totalPend, halfEach: totalPend / 2 };
+  if (pendientes.length === 0) return { grupos: [], totalGlobal: 0, halfGlobal: 0 };
+
+  // Agrupar por mes_liquidacion
+  const grupos = {};
+  pendientes.forEach(e => {
+    const mesLiq = e.mesCorte || (e.date ? e.date.slice(0, 7) : "sin-fecha");
+    if (!grupos[mesLiq]) grupos[mesLiq] = { mes: mesLiq, gastos: [], total: 0 };
+    grupos[mesLiq].gastos.push(e);
+    grupos[mesLiq].total += (e.amountCRC || e.amount);
+  });
+
+  // Ordenar por mes ascendente
+  const gruposArr = Object.values(grupos).sort((a, b) => a.mes.localeCompare(b.mes));
+  const totalGlobal = gruposArr.reduce((s, g) => s + g.total, 0);
+
+  return { grupos: gruposArr, totalGlobal, halfGlobal: totalGlobal / 2 };
+}
+
+/**
+ * Marca como liquidados todos los gastos compartidos pendientes
+ * de un mes_liquidacion específico de una sola vez.
+ */
+async function liquidarMes(mesLiq) {
+  const pendMes = expenses.filter(e =>
+    e.type === "shared" && !e.liquidado &&
+    (e.mesCorte || (e.date ? e.date.slice(0, 7) : "")) === mesLiq
+  );
+  if (pendMes.length === 0) return;
+
+  const etiqueta = etiquetaCorte(mesLiq) || mesLiq;
+  const total    = pendMes.reduce((s, e) => s + (e.amountCRC || e.amount), 0);
+
+  if (!confirm(`¿Liquidar todos los gastos compartidos de ${etiqueta}?\n\n${pendMes.length} gastos · ${fmt(total)} total · ${fmt(total / 2)} por persona`)) return;
+
+  const ids = pendMes.map(e => e.id);
+  try {
+    const { error } = await db.from(TABLE).update({ liquidado: true }).in("id", ids);
+    if (error) { showToast("Error: " + (error.message || ""), "err"); return; }
+    // Actualizar local inmediatamente
+    pendMes.forEach(e => { e.liquidado = true; });
+    showToast(`✓ ${etiqueta} liquidado — ${fmt(total / 2)} por persona`, "ok");
+    renderAll();
+  } catch (err) {
+    showToast("Error: " + (err.message || String(err)), "err");
+  }
 }
 
 /**
@@ -3174,15 +3249,26 @@ function renderPublic() {
   }
   document.getElementById("balance-text").innerHTML = balHTML;
 
-  // ── Pendiente de liquidar (histórico completo, sin filtro de período) ──
+  // ── Pendiente de liquidar (histórico completo, agrupado por mes_liquidacion) ──
   const pend = calcPendienteLiquidar();
-  const pendBox = document.getElementById("pending-box");
   let pendHTML;
-  if (pend.count === 0) {
+  if (pend.grupos.length === 0) {
     pendHTML = "✅ No hay gastos compartidos pendientes de liquidar.";
   } else {
-    pendHTML = `<strong>${fmt(pend.halfEach)}</strong> pendiente por liquidar entre Marvin y Karol `
-      + `<span style="color:var(--muted);font-size:0.78rem">(${pend.count} gasto${pend.count !== 1 ? "s" : ""} sin marcar, ${fmt(pend.total)} en total)</span>`;
+    pendHTML = pend.grupos.map(g => {
+      const etiq   = etiquetaCorte(g.mes) || g.mes;
+      const count  = g.gastos.length;
+      return `<div class="pend-mes-row">
+        <span class="pend-mes-lbl">${etiq}</span>
+        <span class="pend-mes-tot">${count} gasto${count !== 1 ? "s" : ""} · ${fmt(g.total)} total</span>
+        <span class="pend-mes-half">${fmt(g.total / 2)} c/u</span>
+        <button class="btn-liquidar-mes" onclick="liquidarMes('${g.mes}')">✓ Liquidar</button>
+      </div>`;
+    }).join("");
+    pendHTML += `<div class="pend-total-row">
+      <span class="pend-total-lbl">Total pendiente</span>
+      <span class="pend-total-half">${fmt(pend.halfGlobal)} por persona</span>
+    </div>`;
   }
   document.getElementById("pending-text").innerHTML = pendHTML;
 
