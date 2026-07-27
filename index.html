@@ -768,6 +768,11 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
     <div class="breakdown-grid" id="pub-breakdown"></div>
 
     <p class="sec">/ Detalle Gastos Compartidos</p>
+    <div class="filter-pills" id="pub-liq-filter">
+      <button class="filter-pill active" id="pub-lf-todos"     onclick="setPubLiqFilter('todos')">📋 Todos</button>
+      <button class="filter-pill"        id="pub-lf-pendiente" onclick="setPubLiqFilter('pendiente')">⏳ Pendiente</button>
+      <button class="filter-pill"        id="pub-lf-liquidado" onclick="setPubLiqFilter('liquidado')">✅ Liquidado</button>
+    </div>
     <div class="categories" id="pub-cats"></div>
   </div>
 
@@ -930,9 +935,14 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         </div>
       </div>
       <div class="filter-pills" id="type-filter-1">
-        <button class="filter-pill active" id="tf-1-todos"     onclick="setTypeFilter(1,'todos')">📋 Todos</button>
-        <button class="filter-pill"        id="tf-1-shared"    onclick="setTypeFilter(1,'shared')">👥 Compartido</button>
+        <button class="filter-pill active" id="tf-1-todos"      onclick="setTypeFilter(1,'todos')">📋 Todos</button>
+        <button class="filter-pill"        id="tf-1-shared"     onclick="setTypeFilter(1,'shared')">👥 Compartido</button>
         <button class="filter-pill"        id="tf-1-individual" onclick="setTypeFilter(1,'individual')">👤 Individual</button>
+      </div>
+      <div class="filter-pills" id="liq-filter-1">
+        <button class="filter-pill active" id="lf-1-todos"     onclick="setLiqFilter(1,'todos')">🔘 Todos</button>
+        <button class="filter-pill"        id="lf-1-pendiente" onclick="setLiqFilter(1,'pendiente')">⏳ Pendiente</button>
+        <button class="filter-pill"        id="lf-1-liquidado" onclick="setLiqFilter(1,'liquidado')">✅ Liquidado</button>
       </div>
       <div class="search-results-lbl" id="type-filter-total-1" style="font-size:0.84rem;color:var(--text);font-weight:700;margin-bottom:8px"></div>
       <div class="vista-toggle" id="vista-toggle-1">
@@ -1103,9 +1113,14 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
         </div>
       </div>
       <div class="filter-pills" id="type-filter-2">
-        <button class="filter-pill active" id="tf-2-todos"     onclick="setTypeFilter(2,'todos')">📋 Todos</button>
-        <button class="filter-pill"        id="tf-2-shared"    onclick="setTypeFilter(2,'shared')">👥 Compartido</button>
+        <button class="filter-pill active" id="tf-2-todos"      onclick="setTypeFilter(2,'todos')">📋 Todos</button>
+        <button class="filter-pill"        id="tf-2-shared"     onclick="setTypeFilter(2,'shared')">👥 Compartido</button>
         <button class="filter-pill"        id="tf-2-individual" onclick="setTypeFilter(2,'individual')">👤 Individual</button>
+      </div>
+      <div class="filter-pills" id="liq-filter-2">
+        <button class="filter-pill active" id="lf-2-todos"     onclick="setLiqFilter(2,'todos')">🔘 Todos</button>
+        <button class="filter-pill"        id="lf-2-pendiente" onclick="setLiqFilter(2,'pendiente')">⏳ Pendiente</button>
+        <button class="filter-pill"        id="lf-2-liquidado" onclick="setLiqFilter(2,'liquidado')">✅ Liquidado</button>
       </div>
       <div class="search-results-lbl" id="type-filter-total-2" style="font-size:0.84rem;color:var(--text);font-weight:700;margin-bottom:8px"></div>
       <div class="vista-toggle" id="vista-toggle-2">
@@ -3206,7 +3221,29 @@ function calcSaldo(person, arr, month, q) {
 /* ─────────────────────────────────────────────────────────────
    3.12 RENDERIZADO — VISTA PÚBLICA
 ───────────────────────────────────────────────────────────── */
-// Filtro de persona en el desglose de Resumen: 'todos' | 1 | 2
+// Estado de filtro por liquidado en perfiles: 'todos' | 'pendiente' | 'liquidado'
+const liqFilterState = { 1: "todos", 2: "todos" };
+let pubLiqFilter = "todos";
+
+function setLiqFilter(person, estado) {
+  liqFilterState[person] = estado;
+  ["todos", "pendiente", "liquidado"].forEach(s => {
+    const el = document.getElementById("lf-" + person + "-" + s);
+    if (el) el.classList.toggle("active", s === estado);
+  });
+  renderPrivate(person);
+}
+
+function setPubLiqFilter(estado) {
+  pubLiqFilter = estado;
+  ["todos", "pendiente", "liquidado"].forEach(s => {
+    const el = document.getElementById("pub-lf-" + s);
+    if (el) el.classList.toggle("active", s === estado);
+  });
+  renderPublic();
+}
+
+// Estado de filtro de persona en Resumen
 let pubPersonFilter = "todos";
 
 function setPubPersonFilter(val) {
@@ -3366,8 +3403,11 @@ function renderPublic() {
   });
   container.innerHTML = "";
   CATEGORIES.forEach(cat => {
-    const catExp = filtered.filter(e => e.catId === cat.id && e.type === "shared");
-    const catTot = catExp.reduce((s,e) => s+e.amount, 0);
+    let catExp = filtered.filter(e => e.catId === cat.id && e.type === "shared");
+    // Aplicar filtro de estado liquidado
+    if (pubLiqFilter === "pendiente") catExp = catExp.filter(e => !e.liquidado);
+    if (pubLiqFilter === "liquidado") catExp = catExp.filter(e =>  e.liquidado);
+    const catTot = catExp.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
     const block  = buildAccordion(cat, catExp, catTot, false);
     block.dataset.catId = cat.id;
     if (openPub.has(cat.id)) block.classList.add("open");
@@ -3551,6 +3591,14 @@ function renderPrivate(person) {
     var listadoBase = tipoSel === "todos"
       ? listadoVista
       : listadoVista.filter(e => e.type === tipoSel || (tipoSel === "individual" && e.type !== "shared"));
+
+    // Aplicar filtro de estado liquidado (solo aplica sobre compartidos)
+    var liqSel = liqFilterState[person];
+    if (liqSel === "pendiente") {
+      listadoBase = listadoBase.filter(e => e.type !== "shared" || !e.liquidado);
+    } else if (liqSel === "liquidado") {
+      listadoBase = listadoBase.filter(e => e.type === "shared" && e.liquidado);
+    }
 
     // Aplicar filtro de búsqueda (texto o rango de fechas)
     var listado = applySearch(listadoBase, person);
