@@ -3407,12 +3407,19 @@ function renderPublic() {
     // Aplicar filtro de estado liquidado
     if (pubLiqFilter === "pendiente") catExp = catExp.filter(e => !e.liquidado);
     if (pubLiqFilter === "liquidado") catExp = catExp.filter(e =>  e.liquidado);
+    // Ocultar categorías vacías si hay filtro activo
+    if (pubLiqFilter !== "todos" && catExp.length === 0) return;
     const catTot = catExp.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
     const block  = buildAccordion(cat, catExp, catTot, false);
     block.dataset.catId = cat.id;
     if (openPub.has(cat.id)) block.classList.add("open");
+    // Auto-expandir si hay filtro activo
+    if (pubLiqFilter !== "todos" && catExp.length > 0) block.classList.add("open");
     container.appendChild(block);
   });
+  if (container.children.length === 0) {
+    container.innerHTML = "<p class='empty'>Sin gastos compartidos que coincidan con el filtro.</p>";
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -3636,19 +3643,31 @@ function renderPrivate(person) {
       totalLbl.innerHTML = totalMostrado;
     }
 
+    // ¿Hay algún filtro activo? — si sí, ocultar categorías vacías
+    var hayFiltro = tipoSel !== "todos" || liqSel !== "todos" || hayBusqueda;
+
     CATEGORIES.forEach(function(cat) {
       var catExp = listado.filter(e => e.catId === cat.id);
       var catTot = catExp.reduce((s,e) => s+(e.amountCRC||e.amount), 0);
+      // Ocultar categoría si está vacía Y hay algún filtro activo
+      if (hayFiltro && catExp.length === 0) return;
       try {
         var block = buildAccordion(cat, catExp, catTot, true);
         block.dataset.catId = cat.id;
         // Restaurar estado abierto si estaba abierto antes
         if (openCats.has(cat.id)) block.classList.add("open");
+        // Auto-expandir si hay filtro activo y la categoría tiene resultados
+        if (hayFiltro && catExp.length > 0) block.classList.add("open");
         container.appendChild(block);
       } catch(err) {
         console.warn("buildAccordion " + cat.id + ":", err.message);
       }
     });
+
+    // Si no hay resultados en ninguna categoría mostrar mensaje
+    if (container.children.length === 0) {
+      container.innerHTML = "<p class='empty'>Sin gastos que coincidan con los filtros seleccionados.</p>";
+    }
   }
 
   // Mostrar/ocultar pills de quincena según el modo (corte = mensual)
