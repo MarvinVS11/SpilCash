@@ -1363,24 +1363,25 @@ function applySearch(arr, person) {
   const st = searchState[person];
   if (st.mode === "fecha" && (st.from || st.to)) {
     if (st.dateRangeOn) {
-      // Modo rango: from ≤ date ≤ to
       return arr.filter(e => {
         if (st.from && e.date < st.from) return false;
         if (st.to   && e.date > st.to)   return false;
         return true;
       });
     }
-    // Modo fecha única: coincidencia exacta del día
     return arr.filter(e => e.date === st.from);
   }
   if (st.mode === "monto" && st.amt) {
-    // Filtra por el INICIO del monto (sin puntos ni comas).
-    // Para gastos compartidos compara contra el monto completo Y contra la mitad
-    // (lo que se muestra en pantalla), así escribir "56" encuentra ¢56.238
-    // aunque el monto real sea ¢112.476.
     const needle = st.amt.replace(/[^\d]/g, "");
     if (!needle) return arr;
-    return arr.filter(e => {
+    // Buscar en los gastos del array (propios) + todos los shared del período
+    // para que encuentre gastos compartidos registrados por el otro usuario
+    const month = document.getElementById("p" + person + "-month")?.value || "";
+    const q     = privQ[person] || 0;
+    const allShared = filterByVista(expenses, person, month, q)
+                        .filter(e => e.type === "shared");
+    const combined  = [...arr, ...allShared.filter(e => !arr.find(a => a.id === e.id))];
+    return combined.filter(e => {
       const amt     = e.amountCRC || e.amount;
       const half    = amt / 2;
       const amtStr  = String(Math.round(amt));
