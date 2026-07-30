@@ -1375,13 +1375,17 @@ function applySearch(arr, person) {
   }
   if (st.mode === "monto" && st.amt) {
     // Filtra por el INICIO del monto (sin puntos ni comas).
-    // Escribir "6750" encuentra 6750, 67500, 675000... pero NO 216750.
+    // Para gastos compartidos compara contra el monto completo Y contra la mitad
+    // (lo que se muestra en pantalla), así escribir "56" encuentra ¢56.238
+    // aunque el monto real sea ¢112.476.
     const needle = st.amt.replace(/[^\d]/g, "");
     if (!needle) return arr;
     return arr.filter(e => {
-      const amt = e.amountCRC || e.amount;
-      const amtStr = String(Math.round(amt));
-      return amtStr.startsWith(needle);
+      const amt     = e.amountCRC || e.amount;
+      const half    = amt / 2;
+      const amtStr  = String(Math.round(amt));
+      const halfStr = String(Math.round(half));
+      return amtStr.startsWith(needle) || halfStr.startsWith(needle);
     });
   }
   if (st.mode === "texto" && st.text) {
