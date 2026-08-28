@@ -3145,6 +3145,9 @@ async function exportarGastos(btn) {
     showToast("Error al generar imagen: " + (err.message||""), "err");
   }
 }
+
+/**
+ * Activa/desactiva la edición inline de una fila.
  * Reemplaza el contenido de cada celda por un input/select editable.
  */
 function editExpense(id, btnEl) {
