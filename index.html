@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -533,7 +534,39 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
 .chart-legend-lbl { color: var(--muted); flex: 1; }
 .chart-legend-val { font-weight: 700; color: var(--text); }
 
-/* ── Buscador de gastos ── */
+.btn-export-img {
+  background: transparent; border: 1.5px solid var(--border); color: var(--muted);
+  border-radius: 8px; padding: 4px 10px; font-family: inherit; font-size: 0.70rem;
+  font-weight: 700; cursor: pointer; transition: var(--tr); white-space: nowrap;
+}
+.btn-export-img:hover { border-color: var(--sh); color: var(--sh); }
+
+/* Panel de exportación — se renderiza offscreen y luego se convierte a imagen */
+#export-panel {
+  position: fixed; left: -9999px; top: 0;
+  width: 420px; background: #0d0f18;
+  font-family: 'Inter', sans-serif; padding: 28px 24px;
+  border-radius: 16px; color: #f0f0f4;
+}
+.exp-header { margin-bottom: 20px; }
+.exp-title  { font-size: 1.0rem; font-weight: 800; color: #3ecfaa; margin-bottom: 4px; }
+.exp-sub    { font-size: 0.72rem; color: #6b7494; }
+.exp-row    {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 0; border-bottom: 1px solid #1e2236;
+  gap: 12px;
+}
+.exp-row:last-of-type { border-bottom: none; }
+.exp-desc   { font-size: 0.80rem; flex: 1; color: #f0f0f4; }
+.exp-date   { font-size: 0.72rem; color: #6b7494; white-space: nowrap; }
+.exp-amt    { font-size: 0.82rem; font-weight: 700; color: #f0f0f4; white-space: nowrap; }
+.exp-total-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 14px; padding-top: 12px; border-top: 2px solid #3ecfaa;
+}
+.exp-total-lbl  { font-size: 0.78rem; color: #6b7494; font-weight: 700; }
+.exp-total-amt  { font-size: 1.05rem; font-weight: 800; color: #3ecfaa; }
+.exp-footer { font-size: 0.62rem; color: #6b7494; margin-top: 16px; text-align: center; }
 .search-bar {
   display: flex; flex-direction: column; gap: 8px;
   margin-bottom: 10px;
@@ -1133,6 +1166,7 @@ main { max-width: 1040px; margin: 0 auto; padding: 22px 15px 80px; }
   </div>
 
 </main>
+<div id="export-panel"></div>
 <div id="toast"></div>
 
 <!-- ══════════════════════════════════════════════════════════════
@@ -3021,7 +3055,96 @@ async function liquidarMes(mesLiq) {
 }
 
 /**
- * Activa/desactiva la edición inline de una fila.
+ * Genera una imagen con los gastos del acordeón.
+ * Muestra descripción, fecha y monto de cada gasto, con el total al final.
+ * Usa html2canvas para convertir el panel a imagen descargable.
+ */
+async function exportarGastos(btn) {
+  // Localizar el cat-block padre del botón
+  const block = btn.closest(".cat-block");
+  if (!block) return;
+
+  // Obtener catId y buscar los gastos del acordeón actualmente visible
+  const catId = block.dataset.catId;
+  // Leer las filas de la tabla dentro del bloque
+  const rows = block.querySelectorAll(".expense-table tbody tr:not([style*='display:none'])");
+  if (rows.length === 0) { showToast("Sin gastos para exportar", "err"); return; }
+
+  // Extraer datos de las filas
+  const gastos = [];
+  let total = 0;
+  rows.forEach(row => {
+    if (row.classList.contains("row-editing")) return;
+    const cells = row.querySelectorAll("td");
+    if (cells.length < 3) return;
+    // col 0: desc, col 2: fecha, col 1: monto
+    const desc  = cells[0]?.innerText?.split("\n")[0]?.trim() || "";
+    const fecha = cells[2]?.innerText?.trim() || "";
+    const monto = cells[1]?.innerText?.trim() || "";
+    if (!desc) return;
+    gastos.push({ desc, fecha, monto });
+    // Sumar monto numérico (primera cifra del texto)
+    const raw = parseFloat(cells[1]?.innerText?.replace(/[^\d.]/g,"")) || 0;
+    total += raw;
+  });
+
+  if (gastos.length === 0) { showToast("Sin gastos para exportar", "err"); return; }
+
+  // Obtener nombre de categoría
+  const catNm = block.querySelector(".cat-nm")?.innerText || "Gastos";
+  const catIco = block.querySelector(".cat-ico")?.innerText || "";
+
+  // Construir HTML del panel de exportación
+  const panel = document.getElementById("export-panel");
+  const now   = new Date();
+  const fecha = now.getDate().toString().padStart(2,"0") + "/" +
+                (now.getMonth()+1).toString().padStart(2,"0") + "/" + now.getFullYear();
+
+  panel.innerHTML = `
+    <div class="exp-header">
+      <div class="exp-title">${catIco} ${catNm}</div>
+      <div class="exp-sub">SplitCash · ${fecha}</div>
+    </div>
+    ${gastos.map(g => `
+      <div class="exp-row">
+        <span class="exp-desc">${g.desc}</span>
+        <span class="exp-date">${g.fecha}</span>
+        <span class="exp-amt">${g.monto}</span>
+      </div>
+    `).join("")}
+    <div class="exp-total-row">
+      <span class="exp-total-lbl">Total</span>
+      <span class="exp-total-amt">${block.querySelector(".cat-tot")?.innerText?.trim() || ""}</span>
+    </div>
+    <div class="exp-footer">Generado con SplitCash</div>
+  `;
+
+  // Posicionar offscreen pero con dimensiones reales
+  panel.style.left = "-9999px";
+  panel.style.display = "block";
+
+  showToast("Generando imagen…", "ok");
+
+  try {
+    const canvas = await html2canvas(panel, {
+      backgroundColor: "#0d0f18",
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
+    panel.style.display = "none";
+
+    // Descargar la imagen
+    const link = document.createElement("a");
+    link.download = "splitcash-" + catId + "-" + fecha.replace(/\//g,"-") + ".png";
+    link.href     = canvas.toDataURL("image/png");
+    link.click();
+    showToast("✓ Imagen guardada", "ok");
+  } catch(err) {
+    panel.style.display = "none";
+    showToast("Error al generar imagen: " + (err.message||""), "err");
+  }
+}
  * Reemplaza el contenido de cada celda por un input/select editable.
  */
 function editExpense(id, btnEl) {
@@ -3858,6 +3981,7 @@ function buildAccordion(cat, catExp, catTot, showDelete) {
       <span class="cat-cnt">${catExp.length} gasto${catExp.length!==1?"s":""}</span>
     </div>
     <span class="cat-tot">${displayTot}</span>
+    <button class="btn-export-img" title="Exportar como imagen" onclick="event.stopPropagation();exportarGastos(this)">📷</button>
     <span class="cat-arr">▼</span>
   `;
   head.onclick = () => block.classList.toggle("open");
