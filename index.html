@@ -3190,7 +3190,7 @@ async function exportarListado(person) {
   const liqLabel  = liqSel === "pendiente" ? " · Pendientes"
     : liqSel === "liquidado" ? " · Liquidados" : "";
   const NAMES_MAP = { 1: "Marvin", 2: "Karol" };
-  const titulo    = NAMES_MAP[person] + " — " + tipoLabel + liqLabel;
+  const titulo    = "Gastos " + periodo;
   const periodo   = document.getElementById("p" + person + "-month")?.selectedOptions?.[0]?.text || month;
 
   // Construir panel
