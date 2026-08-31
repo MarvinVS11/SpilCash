@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -3065,91 +3064,39 @@ async function liquidarMes(mesLiq) {
  * Muestra descripción, fecha y monto de cada gasto, con el total al final.
  * Usa html2canvas para convertir el panel a imagen descargable.
  */
-async function exportarGastos(btn) {
-  // Localizar el cat-block padre del botón
+function exportarGastos(btn) {
   const block = btn.closest(".cat-block");
   if (!block) return;
-
-  // Obtener catId y buscar los gastos del acordeón actualmente visible
-  const catId = block.dataset.catId;
-  // Leer las filas de la tabla dentro del bloque
-  const rows = block.querySelectorAll(".expense-table tbody tr:not([style*='display:none'])");
+  const rows = block.querySelectorAll(".expense-table tbody tr");
   if (rows.length === 0) { showToast("Sin gastos para exportar", "err"); return; }
 
-  // Extraer datos de las filas
-  const gastos = [];
-  let total = 0;
+  const filas = [];
   rows.forEach(row => {
     if (row.classList.contains("row-editing")) return;
     const cells = row.querySelectorAll("td");
     if (cells.length < 3) return;
-    // col 0: desc, col 2: fecha, col 1: monto
     const desc  = cells[0]?.innerText?.split("\n")[0]?.trim() || "";
     const fecha = cells[2]?.innerText?.trim() || "";
-    const monto = cells[1]?.innerText?.trim() || "";
-    if (!desc) return;
-    gastos.push({ desc, fecha, monto });
-    // Sumar monto numérico (primera cifra del texto)
-    const raw = parseFloat(cells[1]?.innerText?.replace(/[^\d.]/g,"")) || 0;
-    total += raw;
+    const monto = cells[1]?.innerText?.replace(/\n.*/g,"").trim() || "";
+    if (desc) filas.push({ desc, fecha, monto });
   });
 
-  if (gastos.length === 0) { showToast("Sin gastos para exportar", "err"); return; }
+  if (filas.length === 0) { showToast("Sin gastos para exportar", "err"); return; }
 
-  // Obtener nombre de categoría
-  const catNm = block.querySelector(".cat-nm")?.innerText || "Gastos";
+  const catNm  = block.querySelector(".cat-nm")?.innerText || "Gastos";
   const catIco = block.querySelector(".cat-ico")?.innerText || "";
+  const totStr = block.querySelector(".cat-tot")?.innerText?.trim() || "";
+  const now    = new Date();
+  const hoy    = String(now.getDate()).padStart(2,"0") + "/" +
+                 String(now.getMonth()+1).padStart(2,"0") + "/" + now.getFullYear();
 
-  // Construir HTML del panel de exportación
-  const panel = document.getElementById("export-panel");
-  const now   = new Date();
-  const fecha = now.getDate().toString().padStart(2,"0") + "/" +
-                (now.getMonth()+1).toString().padStart(2,"0") + "/" + now.getFullYear();
-
-  panel.innerHTML = `
-    <div class="exp-header">
-      <div class="exp-title">${catIco} ${catNm}</div>
-      <div class="exp-sub">SplitCash · ${fecha}</div>
-    </div>
-    ${gastos.map(g => `
-      <div class="exp-row">
-        <span class="exp-desc">${g.desc}</span>
-        <span class="exp-date">${g.fecha}</span>
-        <span class="exp-amt">${g.monto}</span>
-      </div>
-    `).join("")}
-    <div class="exp-total-row">
-      <span class="exp-total-lbl">Total</span>
-      <span class="exp-total-amt">${block.querySelector(".cat-tot")?.innerText?.trim() || ""}</span>
-    </div>
-    <div class="exp-footer">Generado con SplitCash</div>
-  `;
-
-  // Posicionar offscreen pero con dimensiones reales
-  panel.style.left = "-9999px";
-  panel.style.display = "block";
-
-  showToast("Generando imagen…", "ok");
-
-  try {
-    const canvas = await html2canvas(panel, {
-      backgroundColor: "#0d0f18",
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
-    panel.style.display = "none";
-
-    // Descargar la imagen
-    const link = document.createElement("a");
-    link.download = "splitcash-" + catId + "-" + fecha.replace(/\//g,"-") + ".png";
-    link.href     = canvas.toDataURL("image/png");
-    link.click();
-    showToast("✓ Imagen guardada", "ok");
-  } catch(err) {
-    panel.style.display = "none";
-    showToast("Error al generar imagen: " + (err.message||""), "err");
-  }
+  showToast("Generando imagen...", "ok");
+  dibujarYDescargar(
+    catIco + " " + catNm,
+    "SplitCash · " + hoy,
+    filas, totStr,
+    "splitcash-" + (block.dataset.catId || "gastos") + "-" + hoy.replace(/\//g,"-") + ".png"
+  );
 }
 
 /**
@@ -3157,103 +3104,176 @@ async function exportarGastos(btn) {
  * según los filtros activos (tipo, liquidado, búsqueda, mes, quincena).
  * Muestra descripción, fecha y monto. Total al final.
  */
-async function exportarListado(person) {
-  // Reconstruir el mismo listado que ve el usuario ahora mismo
+function dibujarYDescargar(titulo, subtitulo, filas, totalStr, filename) {
+  const DPR   = 2;
+  const W     = 860;
+  const PAD   = 40;
+  const ROW_H = 42;
+  const TITLE_H = 100;
+  const TOTAL_H = 60;
+  const FOOT_H  = 44;
+  const H = TITLE_H + filas.length * ROW_H + TOTAL_H + FOOT_H;
+
+  const cv  = document.createElement("canvas");
+  cv.width  = W * DPR; cv.height = H * DPR;
+  const ctx = cv.getContext("2d");
+  ctx.scale(DPR, DPR);
+
+  // Fondo
+  ctx.fillStyle = "#0d0f18";
+  ctx.fillRect(0, 0, W, H);
+
+  // Borde verde
+  ctx.strokeStyle = "#3ecfaa"; ctx.lineWidth = 2;
+  const r = 14;
+  ctx.beginPath();
+  ctx.moveTo(r + 8, 8); ctx.lineTo(W - r - 8, 8);
+  ctx.arcTo(W - 8, 8, W - 8, r + 8, r);
+  ctx.lineTo(W - 8, H - r - 8);
+  ctx.arcTo(W - 8, H - 8, W - r - 8, H - 8, r);
+  ctx.lineTo(r + 8, H - 8);
+  ctx.arcTo(8, H - 8, 8, H - r - 8, r);
+  ctx.lineTo(8, r + 8);
+  ctx.arcTo(8, 8, r + 8, 8, r);
+  ctx.closePath(); ctx.stroke();
+
+  // Título
+  ctx.fillStyle = "#3ecfaa";
+  ctx.font = "bold 26px Inter, Arial, sans-serif";
+  ctx.fillText(titulo, PAD, 46);
+
+  // Subtítulo
+  ctx.fillStyle = "#6b7494";
+  ctx.font = "14px Inter, Arial, sans-serif";
+  ctx.fillText(subtitulo, PAD, 72);
+
+  // Línea separadora
+  ctx.strokeStyle = "#1e2236"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD, TITLE_H - 10); ctx.lineTo(W - PAD, TITLE_H - 10); ctx.stroke();
+
+  // Headers
+  ctx.fillStyle = "#4a5080";
+  ctx.font = "bold 12px Inter, Arial, sans-serif";
+  ctx.fillText("DESCRIPCIÓN", PAD, TITLE_H - 16);
+  ctx.fillText("FECHA", W - PAD - 250, TITLE_H - 16);
+  const hTxt = "MONTO";
+  ctx.fillText(hTxt, W - PAD - ctx.measureText(hTxt).width, TITLE_H - 16);
+
+  // Filas
+  filas.forEach((f, i) => {
+    const y = TITLE_H + i * ROW_H;
+    ctx.fillStyle = i % 2 === 0 ? "#10132a" : "#0d0f18";
+    ctx.fillRect(PAD - 6, y, W - PAD * 2 + 12, ROW_H);
+
+    const ty = y + ROW_H * 0.65;
+
+    // Descripción — truncar
+    ctx.fillStyle = "#f0f0f4";
+    ctx.font = "15px Inter, Arial, sans-serif";
+    const maxW = W - PAD * 2 - 310;
+    let desc = f.desc;
+    while (desc.length > 1 && ctx.measureText(desc).width > maxW) desc = desc.slice(0,-1);
+    if (desc !== f.desc) desc += "…";
+    ctx.fillText(desc, PAD, ty);
+
+    // Fecha
+    ctx.fillStyle = "#6b7494";
+    ctx.font = "13px Inter, Arial, sans-serif";
+    ctx.fillText(f.fecha, W - PAD - 250, ty);
+
+    // Monto (alineado a la derecha)
+    ctx.fillStyle = "#f0f0f4";
+    ctx.font = "bold 14px Inter, Arial, sans-serif";
+    const mw = ctx.measureText(f.monto).width;
+    ctx.fillText(f.monto, W - PAD - mw, ty);
+
+    // Separador
+    ctx.strokeStyle = "#181c30"; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD, y + ROW_H); ctx.lineTo(W - PAD, y + ROW_H); ctx.stroke();
+  });
+
+  // Línea total
+  const ty0 = TITLE_H + filas.length * ROW_H;
+  ctx.strokeStyle = "#3ecfaa"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(PAD, ty0); ctx.lineTo(W - PAD, ty0); ctx.stroke();
+
+  // Total
+  ctx.fillStyle = "#3ecfaa";
+  ctx.font = "bold 18px Inter, Arial, sans-serif";
+  ctx.fillText("Total", PAD, ty0 + 38);
+  const tw = ctx.measureText(totalStr).width;
+  ctx.fillText(totalStr, W - PAD - tw, ty0 + 38);
+
+  // Footer
+  ctx.fillStyle = "#3a3f5c";
+  ctx.font = "12px Inter, Arial, sans-serif";
+  ctx.fillText("SplitCash", PAD, ty0 + TOTAL_H + 24);
+
+  // Descargar
+  cv.toBlob(blob => {
+    const url  = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = filename; link.href = url; link.click();
+    URL.revokeObjectURL(url);
+    showToast("\u2713 Imagen guardada", "ok");
+  }, "image/png");
+}
+
+function exportarListado(person) {
   const month = document.getElementById("p" + person + "-month")?.value || "";
   const q     = privQ[person] || 0;
 
   var listadoVista = filterByVista(expenses, person, month, q)
                       .filter(e => e.person === person);
-
   var tipoSel = typeFilterState[person];
   var base = tipoSel === "todos"
     ? listadoVista
     : listadoVista.filter(e => e.type === tipoSel || (tipoSel === "individual" && e.type !== "shared"));
-
   var liqSel = liqFilterState[person];
   if (liqSel === "pendiente") base = base.filter(e => e.type !== "shared" || !e.liquidado);
   else if (liqSel === "liquidado") base = base.filter(e => e.type === "shared" && e.liquidado);
-
   var listado = applySearch(base, person);
 
   if (listado.length === 0) { showToast("Sin gastos para exportar", "err"); return; }
 
-  // Calcular total mostrado (mitad si compartido, completo si individual)
   const totalMostrado = listado.reduce((s, e) => {
     const amt = e.amountCRC || e.amount;
     return s + (e.type === "shared" ? amt / 2 : amt);
   }, 0);
+  const totalCompleto = listado.reduce((s, e) => s + (e.amountCRC || e.amount), 0);
+  const hayShared = listado.some(e => e.type === "shared");
 
-  // Etiqueta del filtro activo para el título
-  const tipoLabel = tipoSel === "shared" ? "Compartidos"
-    : tipoSel === "individual" ? "Individuales" : "Todos los gastos";
-  const liqLabel  = liqSel === "pendiente" ? " · Pendientes"
-    : liqSel === "liquidado" ? " · Liquidados" : "";
-  const NAMES_MAP = { 1: "Marvin", 2: "Karol" };
-  const titulo    = "Gastos " + periodo;
-  const periodo   = document.getElementById("p" + person + "-month")?.selectedOptions?.[0]?.text || month;
+  const periodo  = document.getElementById("p" + person + "-month")?.selectedOptions?.[0]?.text || month;
+  const hoy      = new Date();
+  const fechaHoy = String(hoy.getDate()).padStart(2,"0") + "/" +
+                   String(hoy.getMonth()+1).padStart(2,"0") + "/" + hoy.getFullYear();
 
-  // Construir panel
-  const panel = document.getElementById("export-panel");
-  const hoy   = new Date();
-  const fechaHoy = hoy.getDate().toString().padStart(2,"0") + "/" +
-                   (hoy.getMonth()+1).toString().padStart(2,"0") + "/" + hoy.getFullYear();
+  const filas = listado.map(e => {
+    const amt = e.amountCRC || e.amount;
+    const isSh = e.type === "shared";
+    const isUSD = e.moneda === "USD";
+    let monto;
+    if (isUSD) {
+      monto = isSh ? fmtUSD(e.amount/2) + " (" + fmtUSD(e.amount) + ")" : fmtUSD(e.amount);
+    } else {
+      monto = isSh ? fmt(amt/2) + " (" + fmt(amt) + ")" : fmt(amt);
+    }
+    const marks = (isSh ? " |comp|" : "") + (isSh ? (e.liquidado ? " OK" : " pend") : "");
+    return { desc: e.desc + marks, fecha: e.date, monto };
+  });
 
-  panel.innerHTML = `
-    <div class="exp-header">
-      <div class="exp-title">${titulo}</div>
-      <div class="exp-sub">SplitCash · ${periodo} · ${fechaHoy}</div>
-    </div>
-    ${listado.map(e => {
-      const amt    = e.amountCRC || e.amount;
-      const isUSD  = e.moneda === "USD";
-      const isSh   = e.type === "shared";
-      let montoStr;
-      if (isUSD) {
-        montoStr = isSh
-          ? fmtUSD(e.amount / 2) + " (" + fmtUSD(e.amount) + ")"
-          : fmtUSD(e.amount);
-      } else {
-        montoStr = isSh
-          ? fmt(amt / 2) + " (" + fmt(amt) + ")"
-          : fmt(amt);
-      }
-      const liqMark = isSh ? (e.liquidado ? " ✅" : " ⏳") : "";
-      const shMark  = isSh ? " 👥" : "";
-      return `<div class="exp-row">
-        <span class="exp-desc">${e.desc}${shMark}${liqMark}</span>
-        <span class="exp-date">${e.date}</span>
-        <span class="exp-amt">${montoStr}</span>
-      </div>`;
-    }).join("")}
-    <div class="exp-total-row">
-      <span class="exp-total-lbl">Total · ${listado.length} gasto${listado.length !== 1 ? "s" : ""}</span>
-      <span class="exp-total-amt">${fmt(totalMostrado)}${listado.some(e => e.type === "shared") ? " (" + fmt(listado.reduce((s,e) => s+(e.amountCRC||e.amount),0)) + " total)" : ""}</span>
-    </div>
-    <div class="exp-footer">Generado con SplitCash</div>
-  `;
+  const totalStr = hayShared
+    ? fmt(totalMostrado) + " (" + fmt(totalCompleto) + " total)"
+    : fmt(totalMostrado);
 
-  panel.style.left = "-9999px";
-  panel.style.display = "block";
-  showToast("Generando imagen…", "ok");
-
-  try {
-    const canvas = await html2canvas(panel, {
-      backgroundColor: "#0d0f18",
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
-    panel.style.display = "none";
-    const link = document.createElement("a");
-    link.download = "splitcash-" + NAMES_MAP[person].toLowerCase() + "-" + (month || fechaHoy.replace(/\//g,"-")) + ".png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    showToast("\u2713 Imagen guardada", "ok");
-  } catch(err) {
-    panel.style.display = "none";
-    showToast("Error: " + (err.message || ""), "err");
-  }
+  showToast("Generando imagen...", "ok");
+  dibujarYDescargar(
+    "Gastos " + periodo,
+    "SplitCash · " + fechaHoy + " · " + listado.length + " gastos",
+    filas, totalStr,
+    "splitcash-" + (month || fechaHoy.replace(/\//g,"-")) + ".png"
+  );
 }
 function editExpense(id, btnEl) {
   const e = expenses.find(ex => ex.id === id);
