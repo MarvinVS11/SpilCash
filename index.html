@@ -3094,7 +3094,7 @@ function exportarGastos(btn) {
   dibujarYDescargar(
     catIco + " " + catNm,
     "SplitCash · " + hoy,
-    filas, totStr,
+    filas, totStr, null,
     "splitcash-" + (block.dataset.catId || "gastos") + "-" + hoy.replace(/\//g,"-") + ".png"
   );
 }
@@ -3104,12 +3104,12 @@ function exportarGastos(btn) {
  * según los filtros activos (tipo, liquidado, búsqueda, mes, quincena).
  * Muestra descripción, fecha y monto. Total al final.
  */
-function dibujarYDescargar(titulo, subtitulo, filas, totalStr, filename) {
+function dibujarYDescargar(titulo, subtitulo, filas, totalStr, totalParenStr, filename) {
   const DPR   = 2;
   const W     = 860;
   const PAD   = 40;
   const ROW_H = 42;
-  const TITLE_H = 100;
+  const TITLE_H = 110;
   const TOTAL_H = 60;
   const FOOT_H  = 44;
   const H = TITLE_H + filas.length * ROW_H + TOTAL_H + FOOT_H;
@@ -3181,11 +3181,22 @@ function dibujarYDescargar(titulo, subtitulo, filas, totalStr, filename) {
     ctx.font = "13px Inter, Arial, sans-serif";
     ctx.fillText(f.fecha, W - PAD - 250, ty);
 
-    // Monto (alineado a la derecha)
-    ctx.fillStyle = "#f0f0f4";
+    // Monto — parte principal blanca, paréntesis en amarillo
     ctx.font = "bold 14px Inter, Arial, sans-serif";
-    const mw = ctx.measureText(f.monto).width;
-    ctx.fillText(f.monto, W - PAD - mw, ty);
+    if (f.paren) {
+      const mainW  = ctx.measureText(f.main).width;
+      const parenW = ctx.measureText(" " + f.paren).width;
+      const totalW = mainW + parenW;
+      const startX = W - PAD - totalW;
+      ctx.fillStyle = "#f0f0f4";
+      ctx.fillText(f.main, startX, ty);
+      ctx.fillStyle = "#f5c842";
+      ctx.fillText(" " + f.paren, startX + mainW, ty);
+    } else {
+      const mw = ctx.measureText(f.monto).width;
+      ctx.fillStyle = "#f0f0f4";
+      ctx.fillText(f.monto, W - PAD - mw, ty);
+    }
 
     // Separador
     ctx.strokeStyle = "#181c30"; ctx.lineWidth = 1;
@@ -3198,12 +3209,23 @@ function dibujarYDescargar(titulo, subtitulo, filas, totalStr, filename) {
   ctx.strokeStyle = "#3ecfaa"; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(PAD, ty0); ctx.lineTo(W - PAD, ty0); ctx.stroke();
 
-  // Total
-  ctx.fillStyle = "#3ecfaa";
+  // Total — main en verde, paréntesis en naranja
   ctx.font = "bold 18px Inter, Arial, sans-serif";
+  ctx.fillStyle = "#3ecfaa";
   ctx.fillText("Total", PAD, ty0 + 38);
-  const tw = ctx.measureText(totalStr).width;
-  ctx.fillText(totalStr, W - PAD - tw, ty0 + 38);
+  if (totalParenStr) {
+    const mainW  = ctx.measureText(totalStr).width;
+    const parenW = ctx.measureText(" " + totalParenStr).width;
+    const startX = W - PAD - mainW - parenW;
+    ctx.fillStyle = "#3ecfaa";
+    ctx.fillText(totalStr, startX, ty0 + 38);
+    ctx.fillStyle = "#ff9f43";
+    ctx.fillText(" " + totalParenStr, startX + mainW, ty0 + 38);
+  } else {
+    const tw = ctx.measureText(totalStr).width;
+    ctx.fillStyle = "#3ecfaa";
+    ctx.fillText(totalStr, W - PAD - tw, ty0 + 38);
+  }
 
   // Footer
   ctx.fillStyle = "#3a3f5c";
@@ -3249,29 +3271,39 @@ function exportarListado(person) {
   const fechaHoy = String(hoy.getDate()).padStart(2,"0") + "/" +
                    String(hoy.getMonth()+1).padStart(2,"0") + "/" + hoy.getFullYear();
 
+  // Calcular fecha inicio y fin del mes seleccionado
+  let fechaRango = "";
+  if (month) {
+    const [yr, mo] = month.split("-").map(Number);
+    const lastDay  = new Date(yr, mo, 0).getDate();
+    fechaRango     = "01/" + String(mo).padStart(2,"0") + "/" + yr +
+                     " — " + lastDay + "/" + String(mo).padStart(2,"0") + "/" + yr;
+  }
+
   const filas = listado.map(e => {
-    const amt = e.amountCRC || e.amount;
-    const isSh = e.type === "shared";
+    const amt   = e.amountCRC || e.amount;
+    const isSh  = e.type === "shared";
     const isUSD = e.moneda === "USD";
-    let monto;
-    if (isUSD) {
-      monto = isSh ? fmtUSD(e.amount/2) + " (" + fmtUSD(e.amount) + ")" : fmtUSD(e.amount);
+    let main, paren;
+    if (isSh) {
+      main  = isUSD ? fmtUSD(e.amount/2) : fmt(amt/2);
+      paren = "(" + (isUSD ? fmtUSD(e.amount) : fmt(amt)) + ")";
     } else {
-      monto = isSh ? fmt(amt/2) + " (" + fmt(amt) + ")" : fmt(amt);
+      main  = isUSD ? fmtUSD(e.amount) : fmt(amt);
+      paren = null;
     }
-    const marks = (isSh ? " |comp|" : "") + (isSh ? (e.liquidado ? " OK" : " pend") : "");
-    return { desc: e.desc + marks, fecha: e.date, monto };
+    const liqMark = isSh ? (e.liquidado ? " ✓" : " ⏳") : "";
+    return { desc: e.desc + liqMark, fecha: e.date, monto: main, main, paren };
   });
 
-  const totalStr = hayShared
-    ? fmt(totalMostrado) + " (" + fmt(totalCompleto) + " total)"
-    : fmt(totalMostrado);
+  const totalStr   = fmt(totalMostrado);
+  const totalParen = hayShared ? "(" + fmt(totalCompleto) + " total)" : null;
 
   showToast("Generando imagen...", "ok");
   dibujarYDescargar(
     "Gastos " + periodo,
-    "SplitCash · " + fechaHoy + " · " + listado.length + " gastos",
-    filas, totalStr,
+    "SplitCash · " + fechaRango + " · " + listado.length + " gastos",
+    filas, totalStr, totalParen,
     "splitcash-" + (month || fechaHoy.replace(/\//g,"-")) + ".png"
   );
 }
